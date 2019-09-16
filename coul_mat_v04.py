@@ -12,6 +12,8 @@ from __future__ import print_function
 import math
 
 from IPython import display
+import matplotlib.pyplot as plt
+plt.switch_backend('agg')
 from matplotlib import cm
 from matplotlib import gridspec
 from matplotlib import pyplot as plt
@@ -19,68 +21,68 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 
-# code for importing samples from Google Drive
-!pip install -U -q PyDrive
-   
-from pydrive.auth import GoogleAuth
-from pydrive.drive import GoogleDrive
-from google.colab import auth
-from oauth2client.client import GoogleCredentials
-import os
-   
-# PyDrive Authentication
-auth.authenticate_user()
-gauth = GoogleAuth()
-gauth.credentials = GoogleCredentials.get_application_default()
-drive = GoogleDrive(gauth)
-   
-# define folder id
-folder_id = '18EC4XbN75LGRMvBfAN7Pd_KnnNajEioS'
-   
-# file_lists will be my list of files from folder
-file_lists = []
-   
-# get lists of files from Google Drive folder
-def ListFolder(parent):
-    filelist=[]
-    file_list = drive.ListFile({'q': "'%s' in parents and trashed=false" % parent}).GetList()
-    for f in file_list:
-        if f['mimeType']=='application/vnd.google-apps.folder': # if folder
-            filelist.append({"id":f['id'],"title":f['title'],"list":ListFolder(f['id'])})
-        else:
-            filelist.append({"title":f['title'],"id":f['id']})
-    return filelist
-   
-file_lists_from_drive = ListFolder(folder_id)
-   
-# choose a local (colab) directory to store the data.
-local_download_path = os.path.expanduser('~/my_sample_data')
-try:
-    os.makedirs(local_download_path)
-except: pass
-   
-for file in file_lists_from_drive:
-    print('title: %s, id: %s' % (file['title'], file['id']))
-    fname = os.path.join(local_download_path, file['title'])
-    print('downloading to {}'.format(fname))
-    f_ = drive.CreateFile({'id': file['id']})
-    f_.GetContentFile(fname)
-    print(fname)
-    file_lists.append(fname)
-   
-# print file lists
-print(file_lists)
-
-molecule_dataframe = pd.read_csv(file_lists[0], sep=",")
-
-from google.colab import files
-uploaded = files.upload()
-
-for fn in uploaded.keys():
-  print('User uploaded file "{name}" with length {length} bytes'.format(
-  name=fn, length=len(uploaded[fn])))
-  
-import io
+## code for importing samples from Google Drive
+#!pip install -U -q PyDrive
+#   
+#from pydrive.auth import GoogleAuth
+#from pydrive.drive import GoogleDrive
+#from google.colab import auth
+#from oauth2client.client import GoogleCredentials
+#import os
+#   
+## PyDrive Authentication
+#auth.authenticate_user()
+#gauth = GoogleAuth()
+#gauth.credentials = GoogleCredentials.get_application_default()
+#drive = GoogleDrive(gauth)
+#   
+## define folder id
+#folder_id = '18EC4XbN75LGRMvBfAN7Pd_KnnNajEioS'
+#   
+## file_lists will be my list of files from folder
+#file_lists = []
+#   
+## get lists of files from Google Drive folder
+#def ListFolder(parent):
+#    filelist=[]
+#    file_list = drive.ListFile({'q': "'%s' in parents and trashed=false" % parent}).GetList()
+#    for f in file_list:
+#        if f['mimeType']=='application/vnd.google-apps.folder': # if folder
+#            filelist.append({"id":f['id'],"title":f['title'],"list":ListFolder(f['id'])})
+#        else:
+#            filelist.append({"title":f['title'],"id":f['id']})
+#    return filelist
+#   
+#file_lists_from_drive = ListFolder(folder_id)
+#   
+## choose a local (colab) directory to store the data.
+#local_download_path = os.path.expanduser('~/my_sample_data')
+#try:
+#    os.makedirs(local_download_path)
+#except: pass
+#   
+#for file in file_lists_from_drive:
+#    print('title: %s, id: %s' % (file['title'], file['id']))
+#    fname = os.path.join(local_download_path, file['title'])
+#    print('downloading to {}'.format(fname))
+#    f_ = drive.CreateFile({'id': file['id']})
+#    f_.GetContentFile(fname)
+#    print(fname)
+#    file_lists.append(fname)
+#   
+## print file lists
+#print(file_lists)
+#
+#molecule_dataframe = pd.read_csv(file_lists[0], sep=",")
+#
+#from google.colab import files
+#uploaded = files.upload()
+#
+#for fn in uploaded.keys():
+#  print('User uploaded file "{name}" with length {length} bytes'.format(
+#  name=fn, length=len(uploaded[fn])))
+#  
+#import io
 
 molecule_dataframe = pd.read_csv(io.StringIO(uploaded['CoulombVector_Coupling'].decode('utf-8')), sep=",")
 
@@ -117,10 +119,11 @@ training_images, training_labels, validation_images, validation_labels, test_ima
 fig = plt.figure(figsize=(15,10))
 ax = plt.axes()
 
-p1 = plt.scatter(range(lentrain), training_labels, s=1)
-plt.plot(range(lentrain), np.zeros((lentrain)))
-plt.show()
+p1 = plt.scatter(range(Target), Target, s=1)
+plt.plot(range(Target), np.zeros((Target)))
+plt.savefig('Coupling(eV)*1000.png')
 
+f=open('model.txt','w')
 from keras import backend as K
 
 def root_mean_squared_error(y_true, y_pred):
@@ -129,7 +132,7 @@ def root_mean_squared_error(y_true, y_pred):
 class myCallback(tf.keras.callbacks.Callback):
   def on_epoch_end(self, epochs, logs={}):
     if (logs.get("loss")<0.01):
-      print("\nReached 1% loss!")
+      f.write("\nReached 1% loss!")
       self.model.stop_training = True
 
 callbacks=myCallback()
@@ -160,6 +163,8 @@ history = model.fit(training_images,
           steps_per_epoch=50
           )
 
+from keras.models import load_model
+model.save('TET_coupling.h5')
 
 nlen = len(test_images)
 
@@ -167,7 +172,6 @@ y = [model.predict(test_images)]
 y = np.array(y).reshape(nlen)
 
 diff = np.subtract(y, test_labels)
-print(max(abs(diff)))
 
 fig = plt.figure(figsize=(30,20))
 ax = plt.axes()
@@ -177,7 +181,6 @@ p2 = plt.scatter(range(nlen), y/1000, c='b', marker='^', label='hypothesis')
 p3 = plt.plot(range(nlen), diff/1000, linewidth=0.5)
 plt.plot(range(nlen), np.zeros((nlen)))
 plt.legend([p1,p2],['true value', 'hypothesis'])
-plt.show()
+plt.savefig('model.png')
 
-print(max(diff)/1000)
-
+f.write('maxres * 1000,'+str(max(abs(diff))))
