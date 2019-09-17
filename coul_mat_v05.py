@@ -7,20 +7,14 @@ Original file is located at
     https://colab.research.google.com/drive/1_Zw2NBZRKE3DNqc34-ZZwqWM7wrArQ-C
 """
 
-from __future__ import print_function
-
+import argparse
 import math
 
-from IPython import display
 import matplotlib.pyplot as plt
 plt.switch_backend('agg')
-from matplotlib import cm
-from matplotlib import gridspec
-from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-
 ## code for importing samples from Google Drive
 #!pip install -U -q PyDrive
 #   
@@ -112,6 +106,7 @@ for sample in range(len(molecule_dataframe)):
 
 training_images, training_labels, validation_images, validation_labels, test_images, test_labels = Feature[:lentrain], Target[:lentrain], Feature[lentrain:lenval], Target[lentrain:lenval], Feature[lenval:], Target[lenval:]
 
+input_dim = 10**2
 # Commented out IPython magic to ensure Python compatibility.
 # %matplotlib inline
 
@@ -121,65 +116,94 @@ training_images, training_labels, validation_images, validation_labels, test_ima
 #p1 = plt.scatter(range(Target), Target, s=1)
 #plt.plot(range(Target), np.zeros((Target)))
 #plt.savefig('Coupling(eV)*1000.png')
+parser = argparse.ArgumentParser(description="Training or Test")
+parser.add_argument('fin', default=None, help='model file name') 
+parser.add_argument('job', help='job option:"train","test"')
 
-f=open('model.txt','w')
-from tensorflow.keras import backend as K
+args = parser.parse_args()
 
-def root_mean_squared_error(y_true, y_pred):
-        return K.sqrt(K.mean(K.square(y_pred - y_true), axis=-1)) 
-
-class myCallback(tf.keras.callbacks.Callback):
-  def on_epoch_end(self, epochs, logs={}):
-    if (logs.get("loss")<0.01):
-      f.write("\nReached 1% loss!")
-      self.model.stop_training = True
-
-callbacks=myCallback()
+if args.job == 'train':
+    import time
+    t = time.strftime('%y%m%d%H%M%S', time.localtime(time.time()))  
  
-model = tf.keras.Sequential([
-    tf.keras.layers.Dense(64, activation='relu'),
-    tf.keras.layers.Dense(64, activation='relu'),
-    tf.keras.layers.Dense(64, activation='relu'),
-    tf.keras.layers.Dense(32, activation='relu'),
-    tf.keras.layers.Dense(1)
-])
-
-model.compile(loss='mean_squared_error',
-              optimizer='adam',
-              use_bias=True,
-              kernel_initializer='RandomNormal',
-              bias_initializer='RandomNormal',
+    f=open('model'+t+'.txt','a')
+    from tensorflow.keras import backend as K
+    
+    def root_mean_squared_error(y_true, y_pred):
+            return K.sqrt(K.mean(K.square(y_pred - y_true), axis=-1)) 
+    
+    class myCallback(tf.keras.callbacks.Callback):
+      def on_epoch_end(self, epochs, logs={}):
+        if (logs.get("loss")<0.01):
+          f.write("\nReached 1% loss!")
+          self.model.stop_training = True
+    
+    callbacks=myCallback()
+   
+    #from keras.models import Sequential
+    #from keras.layers import Dense, Activation     
+    #model = tf.keras.Sequential()
+    #model.add(Dense(64, activation='relu', input_shape=(1,input_dim)))
+    #model.add(Dense(64, activation='relu')) 
+    #model.add(Dense(64, activation='relu'))
+    #model.add(Dense(32, activation='relu')) 
+    #model.add(Dense(1, activation='relu')) 
+    model = tf.keras.Sequential([
+        tf.keras.layers.Dense(64, activation='relu'),
+        tf.keras.layers.Dense(64, activation='relu'),
+        tf.keras.layers.Dense(64, activation='relu'),
+        tf.keras.layers.Dense(32, activation='relu'),
+        tf.keras.layers.Dense(1)
+    ])
+    
+    model.compile(loss='mean_squared_error',
+                  optimizer='adam',
+                  use_bias=True,
+                  kernel_initializer='RandomNormal',
+                  bias_initializer='RandomNormal',
+                  )
+    
+    history = model.fit(training_images, 
+              training_labels, 
+              batch_size=100,
+              verbose=0,
+              epochs=1000,
+              validation_data=(validation_images, validation_labels),
+              callbacks=[callbacks],
+              shuffle=True,
+              #steps_per_epoch=50
               )
+    
+    from tensorflow.keras.models import load_model
+    model.save('TET_'+t+'.h5')
+    f.close()
 
-history = model.fit(training_images, 
-          training_labels, 
-          batch_size=100,
-          verbose=0,
-          epochs=1000,
-          validation_data=(validation_images, validation_labels),
-          callbacks=[callbacks],
-          shuffle=True,
-          #steps_per_epoch=50
-          )
+elif args.job == 'test':
+    from tensorflow.keras.models import load_model
+    model = load_model(args.fin)
 
-from tensorflow.keras.models import load_model
-model.save('TET_coupling.h5')
-
-nlen = len(test_images)
-
-y = [model.predict(test_images)]
-y = np.array(y).reshape(nlen)
-
-diff = np.subtract(y, test_labels)
-
-fig = plt.figure(figsize=(30,20))
-ax = plt.axes()
-
-p1 = plt.scatter(range(nlen), test_labels/1000, c='r', marker='o', label='true value')
-p2 = plt.scatter(range(nlen), y/1000, c='b', marker='^', label='hypothesis')
-p3 = plt.plot(range(nlen), diff/1000, linewidth=0.5)
-plt.plot(range(nlen), np.zeros((nlen)))
-plt.legend([p1,p2],['true value', 'hypothesis'])
-plt.savefig('model.png')
-
-f.write('maxres * 1000,'+str(max(abs(diff))))
+    nlen = len(test_images)
+    
+    y = [model.predict(test_images)]
+    y = np.array(y).reshape(nlen)
+    
+    diff = np.subtract(y, test_labels)
+    
+    fig = plt.figure(figsize=(30,20))
+    ax = plt.axes()
+    
+    p1 = plt.scatter(range(nlen), test_labels/1000, c='r', marker='o', label='true value')
+    p2 = plt.scatter(range(nlen), y/1000, c='b', marker='^', label='hypothesis')
+    p3 = plt.plot(range(nlen), diff/1000, linewidth=0.5)
+    plt.plot(range(nlen), np.zeros((nlen)))
+    plt.legend([p1,p2],['true value', 'hypothesis'])
+    plt.savefig('model.png')
+    
+    plt.scatter(y/1000,test_labels/1000)
+    plt.plot(y/1000,y/1000)
+    plt.savefig('diag.png')
+    import time
+    t = time.strftime('%y%m%d%H%M%S', time.localtime(time.time()))  
+    f = open('test'+t+'.txt','w')
+    f.write('maxres * 1000,'+str(max(abs(diff))))
+    f.close()
