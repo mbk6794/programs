@@ -45,7 +45,7 @@ for i in range(len(columns)):
 Target = np.zeros((len(molecule_dataframe)))
 for sample in range(len(molecule_dataframe)):
     #Target[sample] = abs(molecule_dataframe["Coupling(eV)"][sample]) * 1000
-    Target[sample] = abs(molecule_dataframe["Coupling(eV)"][sample]) * 1000
+    Target[sample] = np.log(abs(molecule_dataframe["Coupling(eV)"][sample]) * 1000)
         
 
 
@@ -60,11 +60,11 @@ tr_images, tr_labels, te_images, te_labels = Feature[:lentrain, :], Target[:lent
 
 
 n_inputs = 10**2
-n_hidden1 = 256 
-n_hidden2 = 256 
-n_hidden3 = 256 
-n_hidden4 = 256 
-n_hidden5 = 256 
+n_hidden1 = 256
+n_hidden2 = 256
+n_hidden3 = 256
+n_hidden4 = 256
+n_hidden5 = 256
 n_output = 1
 
 
@@ -148,18 +148,19 @@ with tf.Session() as sess:
         saver.restore(sess, ckpt.model_checkpoint_path)
     else: 
         sess.run(init)
-    
+
     import os
-    os.mkdir(t+"no_log")
-    dirpath = t+"no_log"
-    f = open(dirpath+'/CM_tf'+t+'.txt','w')            
+    os.mkdir(t+"log")
+    dirpath = t+"log"
+    f = open(dirpath+'/CM_tf_log'+t+'.txt','w')            
     for epoch in range(n_epochs):
         for X_batch, y_batch in batch(tr_images, tr_labels, batch_size):
             loss_, _ = sess.run([loss, training_op], feed_dict={X: X_batch, y: y_batch})
-        if epoch%10 == 0:
+        if epoch%100 == 0:
             f.write(str(epoch)+" loss: "+str(loss_)+"\n")
-        #if loss_ < 0.0001:
-        #    break
+        if loss_ < 0.0001:
+            break
+
     #print(epoch, "batch data accuracy:", acc_batch, "valid set accuracy:", acc_valid)
     f.write("final loss: "+str(loss_))
     f.close()
@@ -186,11 +187,10 @@ with tf.Session() as sess:
     ax2.scatter(te_labels, te_hypo, c='r', s=1)
     ax2.plot(te_labels, te_labels, c='k')
     
-    plt.savefig(dirpath+"/CM"+t+".png")
+    plt.savefig(dirpath+"/CM_log"+t+".png")
     
-    save_path = saver.save(sess,dirpath+"/CM_tf"+t+".ckpt")
+    save_path = saver.save(sess, dirpath+"/CM_tf_log"+t+".ckpt")
     writer = tf.summary.FileWriter(dirpath+"/logs",sess.graph)
-
 # In[ ]:
 
 
@@ -202,22 +202,22 @@ plt.figure()
 plt.show()
 '''
 with open(dirpath+'/te_hypo'+t+'.txt','w') as f:
-    f.write('test hypothesis, meV\n')
+    f.write('test hypothesis, log(meV)\n')
     for i in range(len(te_hypo)):
         f.write(str(te_hypo[i][0])+'\n')
 
 with open(dirpath+'/te_labels'+t+'.txt','w') as g:
-    g.write('test_labels, meV\n')
+    g.write('test_labels, log(meV)\n')
     for i in range(len(te_labels)):
         g.write(str(te_labels[i][0])+'\n')
 
 with open(dirpath+'/tr_hypo'+t+'.txt','w') as f:
-    f.write('train hypothesis, meV\n')
+    f.write('train hypothesis, log(meV)\n')
     for i in range(len(tr_hypo)):
         f.write(str(tr_hypo[i][0])+'\n')
 
 with open(dirpath+'/tr_labels'+t+'.txt','w') as g:
-    g.write('train_labels, meV\n')
+    g.write('train_labels, log(meV)\n')
     for i in range(len(tr_labels)):
         g.write(str(tr_labels[i])+'\n')
 
