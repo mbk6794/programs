@@ -143,8 +143,8 @@ with tf.Session() as sess:
     import time
     t = time.strftime("%m%d%H%M", time.localtime(time.time()))
 
-    ckpt = tf.train.get_checkpoint_state('./.')
-    if ckpt and tf.train.checkpoint_exists(ckpt.model_ckeckpoint_path):
+    ckpt = tf.train.get_checkpoint_state('.')
+    if ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
         saver.restore(sess, ckpt.model_checkpoint_path)
     else: 
         sess.run(init)
