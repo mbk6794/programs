@@ -18,9 +18,9 @@ from my_chem import *
 def train_images(images, HL, E_conv):
     Hidden_Layer=tuple(HL)
     print("Hidden Layer: {}".format(Hidden_Layer))
-    print("Energy convergence: {} kJ/mol".format(E_conv/96.487))
+    print("Energy convergence: {}".format(E_conv))
     calc = Amp(descriptor=Gaussian(), model=NeuralNetwork(hiddenlayers=Hidden_Layer), cores=20)
-    calc.model.lossfunction = LossFunction(convergence={'energy_rmse': E_conv/96.487})
+    calc.model.lossfunction = LossFunction(convergence={'energy_rmse': E_conv})
     #calc.model.lossfunction = LossFunction(force_coefficient=-0.1)
     calc.train(images=images, overwrite=True)
     return
@@ -28,9 +28,9 @@ def train_images(images, HL, E_conv):
 def re_train_images(images, HL, E_conv):
     Hidden_Layer=tuple(HL)
     print("Hidden Layer: {}".format(Hidden_Layer))
-    print("Energy convergence: {} kJ/mol".format(E_conv/96.487))
-    calc = Amp.load("amp.amp")
-    calc.model.lossfunction = LossFunction(convergence={'energy_rmse': E_conv/96.487})
+    print("Energy convergence: {}".format(E_conv))
+    calc = Amp.load("amp.amp", cores=20)
+    calc.model.lossfunction = LossFunction(convergence={'energy_rmse': E_conv})
     calc.train(images=images, overwrite=True)
 
 def run_amp(fdata, job, ndata, HL, E_conv):
@@ -101,6 +101,7 @@ def main():
     parser.add_argument('-n', '--dlimit', type=int,  help='data range for training and test')
     parser.add_argument('-hl', '--hidden_layer', nargs='*', type=int, default=[8,8,8], help='Hidden Layer of lists of integer')
     parser.add_argument('-el', '--e_convergence', default=0.001, type=float, help='energy convergence limit')
+    parser.add_argument('-mo', '--nmolecules', defalut=1,  type=int, help='the number of molecules')
     #group_train = parser.add_mutually_exclusive_group()
     #group_test  = parser.add_mutually_exclusive_group()
     #group_train.add_argument('-l', '--data_limit', type=int, help='the number of data to be trained')
@@ -109,7 +110,8 @@ def main():
     #parser.add_argument('-s', '--sets', default=1, type=int, help='nsets to divide data into training and test set')
     args = parser.parse_args()
 
-    run_amp(args.fin, args.job, args.dlimit, args.hidden_layer, args.e_convergence)
+    E_conv = float(args.e_convergence)/int(args.nmolecules)
+    run_amp(args.fin, args.job, args.dlimit, args.hidden_layer, E_conv)
     #run_amp(args.fin, 'test', args.dlimit, args.hidden_layer, args.e_convergence)
     #dir1=os.getcwd()
     #dir1=dir1[-5:]
