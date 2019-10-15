@@ -217,18 +217,18 @@ with tf.Session(config=config) as sess:
     import os
     os.mkdir(t+"log")
     dirpath = t+"log"
-    #f = open(dirpath+'/CM_tf_log'+t+'.txt','w')            
-    #for epoch in range(n_epochs):
-    #    for X_batch, y_batch in batch(tr_images, tr_labels, batch_size):
-    #        loss_, _ = sess.run([loss, training_op], feed_dict={X: X_batch, y: y_batch})
-    #    if epoch%100 == 0:
-    #        f.write(str(epoch)+" loss: "+str(loss_)+"\n")
-    #    if loss_ < 1e-5:
-    #        break
+    f = open(dirpath+'/CM_tf_log'+t+'.txt','w')            
+    for epoch in range(n_epochs):
+        for X_batch, y_batch in batch(tr_images, tr_labels, batch_size):
+            loss_, _ = sess.run([loss, training_op], feed_dict={X: X_batch, y: y_batch})
+        if epoch%100 == 0:
+            f.write(str(epoch)+" loss: "+str(loss_)+"\n")
+        if loss_ < 1e-5:
+            break
 
-    #print(epoch, "batch data accuracy:", acc_batch, "valid set accuracy:", acc_valid)
-    #f.write("final loss: "+str(loss_))
-    #f.close()
+    print(epoch, "batch data accuracy:", acc_batch, "valid set accuracy:", acc_valid)
+    f.write("final loss: "+str(loss_))
+    f.close()
    
     tr_hypo = sess.run(output, feed_dict={X:tr_images})
     te_hypo = sess.run(output, feed_dict={X:te_images})
@@ -283,7 +283,7 @@ plt.show()
 
 # In[ ]:
 
-'''
+
 with open(dirpath+'/te_hypo'+t+'.txt','w') as f:
     f.write('test hypothesis, meV\n')
     for i in range(len(te_hypo)):
@@ -315,4 +315,4 @@ with open(dirpath+'/te_images'+t+'.txt','w') as f:
         for j in range(len(te_images[i])):
             f.write(str(te_images[i][j])+' ')
         f.write('\n')
-'''
+
