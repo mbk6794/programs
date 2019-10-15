@@ -217,18 +217,18 @@ with tf.Session(config=config) as sess:
     import os
     os.mkdir(t+"log")
     dirpath = t+"log"
-    f = open(dirpath+'/CM_tf_log'+t+'.txt','w')            
-    for epoch in range(n_epochs):
-        for X_batch, y_batch in batch(tr_images, tr_labels, batch_size):
-            loss_, _ = sess.run([loss, training_op], feed_dict={X: X_batch, y: y_batch})
-        if epoch%100 == 0:
-            f.write(str(epoch)+" loss: "+str(loss_)+"\n")
-        if loss_ < 1e-5:
-            break
+    #f = open(dirpath+'/CM_tf_log'+t+'.txt','w')            
+    #for epoch in range(n_epochs):
+    #    for X_batch, y_batch in batch(tr_images, tr_labels, batch_size):
+    #        loss_, _ = sess.run([loss, training_op], feed_dict={X: X_batch, y: y_batch})
+    #    if epoch%100 == 0:
+    #        f.write(str(epoch)+" loss: "+str(loss_)+"\n")
+    #    if loss_ < 1e-5:
+    #        break
 
     #print(epoch, "batch data accuracy:", acc_batch, "valid set accuracy:", acc_valid)
-    f.write("final loss: "+str(loss_))
-    f.close()
+    #f.write("final loss: "+str(loss_))
+    #f.close()
    
     tr_hypo = sess.run(output, feed_dict={X:tr_images})
     te_hypo = sess.run(output, feed_dict={X:te_images})
@@ -250,8 +250,8 @@ with tf.Session(config=config) as sess:
     ax2.set_ylabel("hypothesis (meV)")
     ax2.set_xlabel("labels (meV)")
 
-    tr_lim = max(np.power(10,tr_labels), np.power(10,tr_hypo)) 
-    te_lim = max(np.power(10,te_labels), np.power(10,te_hypo)) 
+    tr_lim = max(max(np.power(10,tr_labels)), max(np.power(10,tr_hypo))) 
+    te_lim = max(max(np.power(10,te_labels)), max(np.power(10,te_hypo)))
 
     ax1.set_xlim([0,tr_lim])
     ax1.set_ylim([0,tr_lim])
@@ -259,14 +259,14 @@ with tf.Session(config=config) as sess:
     ax2.set_ylim([0,te_lim])
   
     ax1.scatter(np.power(10,tr_labels), np.power(10,tr_hypo), c='r', s=1)
-    ax1.plot(np.power(10,tr_labels), np.power(10,tr_labels), c='k')
+    ax1.plot([0,tr_lim], [0,tr_lim], c='k')
     ax2.scatter(np.power(10,te_labels), np.power(10,te_hypo), c='r', s=1)
-    ax2.plot(np.power(10,te_labels), np.power(10,te_labels), c='k')
+    ax2.plot([0,te_lim], [0,te_lim], c='k')
     
     plt.savefig(dirpath+"/CM_log"+t+".png")
     
-    save_path = saver.save(sess, dirpath+"/CM_tf_log"+t+".ckpt")
-    writer = tf.summary.FileWriter(dirpath+"/logs",sess.graph)
+    #save_path = saver.save(sess, dirpath+"/CM_tf_log"+t+".ckpt")
+    #writer = tf.summary.FileWriter(dirpath+"/logs",sess.graph)
 
 
 # In[ ]:
@@ -283,7 +283,7 @@ plt.show()
 
 # In[ ]:
 
-
+'''
 with open(dirpath+'/te_hypo'+t+'.txt','w') as f:
     f.write('test hypothesis, meV\n')
     for i in range(len(te_hypo)):
@@ -315,4 +315,4 @@ with open(dirpath+'/te_images'+t+'.txt','w') as f:
         for j in range(len(te_images[i])):
             f.write(str(te_images[i][j])+' ')
         f.write('\n')
-
+'''
