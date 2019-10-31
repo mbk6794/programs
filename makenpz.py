@@ -63,15 +63,14 @@ def makenpz(dirpath, sidx, eidx, num_atoms):
                         image_dip.append(eval(dip[j]))
                     dictionary['D'].append(image_dip)
                     break
+        os.chdir('../..')        
         
-        dictionary['Z'] = np.array(dictionary['Z']).reshape((-1,num_atoms))
-        dictionary['R'] = np.array(dictionary['R']).reshape((-1,num_atoms,3))             
-        dictionary['E'] = np.array(dictionary['E']).reshape((-1,1))
-        dictionary['C'] = np.array(dictionary['C']).reshape((-1,1))
-        dictionary['D'] = np.array(dictionary['D']).reshape((-1,3))
+    dictionary['Z'] = np.array(dictionary['Z']).reshape((-1,num_atoms))
+    dictionary['R'] = np.array(dictionary['R']).reshape((-1,num_atoms,3))             
+    dictionary['E'] = np.array(dictionary['E']).reshape((-1,1))
+    dictionary['C'] = np.array(dictionary['C']).reshape((-1,1))
+    dictionary['D'] = np.array(dictionary['D']).reshape((-1,3))
         
-        os.chdir('../..')
-    print(dictionary.items())
     np.savez('./{:s}.npz'.format(dirpath),**dictionary)
     
 
