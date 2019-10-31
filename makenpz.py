@@ -9,6 +9,7 @@ def makenpz(dirpath, sidx, eidx, num_atoms):
     chem_dic = {'H':1,'C':6,'O':8}
     dp = glob.glob('{:s}[0-9][0-9][0-9]'.format(dirpath))
     dp.sort()
+    if eidx == -1:
         dp = dp[sidx:]
     else:
         dp = dp[sidx:eidx]
