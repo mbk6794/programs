@@ -19,10 +19,11 @@ import os
 
 fig = plt.figure(figsize=(15,10))
 #ax = plt.axes()
-gs = gridspec.GridSpec(nrows=2, ncols=2)
+gs = gridspec.GridSpec(nrows=2, ncols=3)
 ax1 = fig.add_subplot(gs[0,0])
-ax2 = fig.add_subplot(gs[1, :])
-ax3 = fig.add_subplot(gs[0,1])
+ax2 = fig.add_subplot(gs[0,1])
+ax3 = fig.add_subplot(gs[0,2])
+ax4 = fig.add_subplot(gs[1, :])
 
 def draw(fdata, y, h):
     fdata = fdata[:-7]
@@ -46,27 +47,47 @@ def draw(fdata, y, h):
     #plt.scatter(x, y, 'r', x, y_bar, 'b')
     ax1.set_xlabel('data', fontsize=15)
     ax1.set_ylabel('PE(kJ/mol)', fontsize=15)
+    ax2.set_xlabel('data', fontsize=15)
+    ax2.set_ylabel('PE(kJ/mol)', fontsize=15)
     ax3.set_xlabel('data', fontsize=15)
     ax3.set_ylabel('PE(kJ/mol)', fontsize=15)
-    ax2.set_xlabel('data', fontsize=20)
-    ax2.set_ylabel('PE(kJ/mol)', fontsize=20)
+    ax4.set_xlabel('data', fontsize=20)
+    ax4.set_ylabel('PE(kJ/mol)', fontsize=20)
    
     w1_y = []
     w1_h = []
     w2_y = []
     w2_h = []
-    for i in range(int(nlen/2)):
-        w1_y.append(y_conv[i*2])
-        w1_h.append(y_conv[i*2])
-        w2_y.append(y_conv[i*2+1])
-        w2_h.append(y_conv[i*2+1])
-      
-    p1 = ax1.scatter(range(int(nlen/2)), w1_y, c='r', marker='o', label='true value')
-    p2 = ax1.scatter(range(int(nlen/2)), w1_h, c='b', marker='^', label='hypothesis')
-    p3 = ax3.scatter(range(int(nlen/2)), w2_y, c='r', marker='o', label='true value')
-    p4 = ax3.scatter(range(int(nlen/2)), w2_h, c='b', marker='^', label='hypothesis')
-    p5 = ax2.plot(range(nlen), diff, label='difference')
-    ax2.plot(range(nlen), ones)
+    w3_y = []
+    w3_h = []
+    for i in range(int(nlen/3)):
+        w1_y.append(y_conv[i*3])
+        w1_h.append(h_conv[i*3])
+        w2_y.append(y_conv[i*3+1])
+        w2_h.append(h_conv[i*3+1])
+        w3_y.append(y_conv[i*3+2])
+        w3_h.append(h_conv[i*3+2])
+
+    w1_diff = np.subtract(np.array(w1_h),np.array(w1_y))
+    w2_diff = np.subtract(np.array(w2_h),np.array(w2_y))
+    w3_diff = np.subtract(np.array(w3_h),np.array(w3_y))
+    n_diff = np.array(np.concatenate((np.concatenate((w1_diff,w2_diff),axis=None),w3_diff),axis=None))
+ 
+    w1_y = np.array(w1_y).reshape((-1,1))
+    w1_h = np.array(w1_h).reshape((-1,1))
+    w2_y = np.array(w2_y).reshape((-1,1))
+    w2_h = np.array(w2_h).reshape((-1,1))
+    w3_y = np.array(w3_y).reshape((-1,1))
+    w3_h = np.array(w3_h).reshape((-1,1))
+ 
+    p1 = ax1.scatter(range(int(nlen/3)), w1_y, c='r', marker='o', label='true value')
+    p2 = ax1.scatter(range(int(nlen/3)), w1_h, c='b', marker='^', label='hypothesis')
+    p3 = ax2.scatter(range(int(nlen/3)), w2_y, c='r', marker='o', label='true value')
+    p4 = ax2.scatter(range(int(nlen/3)), w2_h, c='b', marker='^', label='hypothesis')
+    p5 = ax3.scatter(range(int(nlen/3)), w3_y, c='r', marker='o', label='true value')
+    p6 = ax3.scatter(range(int(nlen/3)), w3_h, c='b', marker='^', label='hypothesis')
+    p7 = ax4.plot(range(nlen), n_diff, label='difference')
+    ax4.plot(range(nlen), ones)
     plt.legend()
     plt.savefig(fdata+'.png')
 
