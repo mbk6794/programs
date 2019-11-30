@@ -11,154 +11,177 @@ import numpy as np
 import tensorflow as tf
 import pandas as pd
 import argparse
+import time
+import glob
+import os
 
 
 # In[ ]:
 
 
-def train(fin, intype, ndata):
-    molecule_dataframe = pd.read_csv(fin,sep=",")
- 
-    molecule_dataframe = molecule_dataframe.reindex(np.random.permutation(molecule_dataframe.index))
-    if ndata != None:
-        lentotal = ndata
-    else:
-        lentotal = len(molecule_dataframe)
-    lentrain = int(lentotal*0.8)
-    lentest = int((lentotal - lentrain)/2)
-    lenval = int((lentotal - lentrain)/2)
-
-    if intype == 'a':
-        columns = []
-       
-        for i in range(1,21):
-            for j in range(i,21):
-                columns.append('{:2d}-{:2d}'.format(i,j))
-            
-        Feature = np.zeros((len(molecule_dataframe),len(columns)))
- 
-        for i in range(len(columns)):
-            for sample in range(len(molecule_dataframe)):
-                Feature[sample][i] = molecule_dataframe[columns[i]][sample] 
-
-    elif intype == 'b':
-        columns = []
-      
-        for i in range(1,21): 
-            columns.append('{:2d}-{:2d}'.format(i,i)) 
-        for i in range(1,11):
-            for j in range(11,21):
-                columns.append('{:2d}-{:2d}'.format(i,j))
-            
-        Feature = np.zeros((len(molecule_dataframe),len(columns)))
- 
-        for i in range(len(columns)):
-            for sample in range(len(molecule_dataframe)):
-                Feature[sample][i] = molecule_dataframe[columns[i]][sample] 
-
-    elif intype == 'c':
-        columns = []
- 
-        for i in range(1,11):
-            for j in range(11,21):
-                columns.append('{:2d}-{:2d}'.format(i,j))
-            
-        Feature = np.zeros((len(molecule_dataframe),len(columns)))
-
-        for i in range(len(columns)):
-            for sample in range(len(molecule_dataframe)):
-                Feature[sample][i] = molecule_dataframe[columns[i]][sample]
- 
-    Target = np.zeros((len(molecule_dataframe)))
-    for sample in range(len(molecule_dataframe)):
-        Target[sample] = abs(molecule_dataframe["Coupling(eV)"][sample]) 
-        #Target[sample] = np.log10(abs(molecule_dataframe["Coupling(eV)"][sample]) * 1000)
- 
-    Target = Target.reshape((len(molecule_dataframe),1))
+def makefeature(tr, fin=None, intype=None, ndata=0):
+    if tr == "train":
+        molecule_dataframe = pd.read_csv(fin,sep=",")
+     
+        molecule_dataframe = molecule_dataframe.reindex(np.random.permutation(molecule_dataframe.index))
+        if ndata != None:
+            lentotal = ndata
+        else:
+            lentotal = len(molecule_dataframe)
+        lentrain = int(lentotal*0.8)
+        lentest = int((lentotal - lentrain)/2)
+        lenval = int((lentotal - lentrain)/2)
     
-    tr_images, tr_labels, val_images, val_labels, te_images, te_labels = Feature[:lentrain, :], Target[:lentrain, :], Feature[lentrain:lentrain+lenval, :], Target[lentrain:lentrain+lenval, :] ,Feature[lentrain+lenval:lentotal, :], Target[lentrain+lenval:lentotal,:]
-    return tr_images, tr_labels, val_images, val_labels, te_images, te_labels, lentrain, lenval, lentotal
-
-
-# In[ ]:
-
-
-def retrain():
-    import glob
-    tr_img = glob.glob('tr_images*.txt')[0]
-    tr_lab = glob.glob('tr_labels*.txt')[0]
-    te_img = glob.glob('te_images*.txt')[0]
-    te_lab = glob.glob('te_labels*.txt')[0]
-    va_img = glob.glob('va_images*.txt')[0]
-    va_lab = glob.glob('va_labels*.txt')[0]
-    # make training_images
-    with open(tr_img,'r') as f: 
-        flines = f.readlines()
-    data = flines[:]
-    for i in range(len(data)):
-        data[i] = data[i].split(' ')
-        data[i].pop()
-        for j in range(len(data[i])):
-            data[i][j] = eval(data[i][j])
-    tr_images = np.array(data)
-
-    # make test_images
-    with open(te_img,'r') as f: 
-        flines = f.readlines()
-    data = flines[:]
-    for i in range(len(data)):
-        data[i] = data[i].split(' ')
-        data[i].pop()
-        for j in range(len(data[i])):
-            data[i][j] = eval(data[i][j])
-    te_images = np.array(data)
-
-    # make validation_images
-    with open(va_img,'r') as f: 
-        flines = f.readlines()
-    data = flines[:]
-    for i in range(len(data)):
-        data[i] = data[i].split(' ')
-        data[i].pop()
-        for j in range(len(data[i])):
-            data[i][j] = eval(data[i][j])
-    val_images = np.array(data)
-
-    # make training_labels
-    with open(tr_lab,'r') as f: 
-        flines = f.readlines()
-    data = flines[1:]
-    for i in range(len(data)):
-        data[i] = eval(data[i])
-    tr_labels = np.array(data)
-    tr_labels = tr_labels.reshape((len(tr_labels),1))
-
-    # make test_labels
-    with open(te_lab,'r') as f: 
-        flines = f.readlines()
-    data = flines[1:]
-    for i in range(len(data)):
-        data[i] = eval(data[i])
-    te_labels = np.array(data)
-    te_labels = te_labels.reshape((len(te_labels),1))
+        if intype == 'a':
+            columns = []
+           
+            for i in range(1,21):
+                for j in range(i,21):
+                    columns.append('{:2d}-{:2d}'.format(i,j))
+                
+            Feature = np.zeros((len(molecule_dataframe),len(columns)))
+     
+            for i in range(len(columns)):
+                for sample in range(len(molecule_dataframe)):
+                    Feature[sample][i] = molecule_dataframe[columns[i]][sample] 
     
-    # make validation_labels
-    with open(va_lab,'r') as f: 
-        flines = f.readlines()
-    data = flines[1:]
-    for i in range(len(data)):
-        data[i] = eval(data[i])
-    val_labels = np.array(data)
-    val_labels = val_labels.reshape((len(val_labels),1))
+        elif intype == 'b':
+            columns = []
+          
+            for i in range(1,21): 
+                columns.append('{:2d}-{:2d}'.format(i,i)) 
+            for i in range(1,11):
+                for j in range(11,21):
+                    columns.append('{:2d}-{:2d}'.format(i,j))
+                
+            Feature = np.zeros((len(molecule_dataframe),len(columns)))
+     
+            for i in range(len(columns)):
+                for sample in range(len(molecule_dataframe)):
+                    Feature[sample][i] = molecule_dataframe[columns[i]][sample] 
     
-    return tr_images, tr_labels, val_images, val_labels, te_images, te_labels, len(tr_labels), len(val_labels)+len(te_labels)
+        elif intype == 'c':
+            columns = []
+     
+            for i in range(1,11):
+                for j in range(11,21):
+                    columns.append('{:2d}-{:2d}'.format(i,j))
+                
+            Feature = np.zeros((len(molecule_dataframe),len(columns)))
+    
+            for i in range(len(columns)):
+                for sample in range(len(molecule_dataframe)):
+                    Feature[sample][i] = molecule_dataframe[columns[i]][sample]
+     
+        Target = np.zeros((len(molecule_dataframe)))
+        for sample in range(len(molecule_dataframe)):
+            Target[sample] = abs(molecule_dataframe["Coupling(eV)"][sample]) 
+            #Target[sample] = np.log10(abs(molecule_dataframe["Coupling(eV)"][sample]) * 1000)
+     
+        Target = Target.reshape((len(molecule_dataframe),1))
+        
+        tr_images, tr_labels, val_images, val_labels, te_images, te_labels = Feature[:lentrain, :], Target[:lentrain, :], Feature[lentrain:lentrain+lenval, :], Target[lentrain:lentrain+lenval, :] ,Feature[lentrain+lenval:lentotal, :], Target[lentrain+lenval:lentotal,:]
+        return tr_images, tr_labels, val_images, val_labels, te_images, te_labels, lentrain, lenval, lentotal
 
+    elif tr == 'retrain' or tr == 'test':
+        tr_img = glob.glob('tr_images*.txt')[0]
+        tr_lab = glob.glob('tr_labels*.txt')[0]
+        te_img = glob.glob('te_images*.txt')[0]
+        te_lab = glob.glob('te_labels*.txt')[0]
+        val_img = glob.glob('val_images*.txt')[0]
+        val_lab = glob.glob('val_labels*.txt')[0]
+        # make training_images
+        with open(tr_img,'r') as f: 
+            flines = f.readlines()
+        data = flines[:]
+        for i in range(len(data)):
+            data[i] = data[i].split(' ')
+            data[i].pop()
+            for j in range(len(data[i])):
+                data[i][j] = eval(data[i][j])
+        tr_images = np.array(data)
+    
+        # make test_images
+        with open(te_img,'r') as f: 
+            flines = f.readlines()
+        data = flines[:]
+        for i in range(len(data)):
+            data[i] = data[i].split(' ')
+            data[i].pop()
+            for j in range(len(data[i])):
+                data[i][j] = eval(data[i][j])
+        te_images = np.array(data)
+    
+        # make validation_images
+        with open(val_img,'r') as f: 
+            flines = f.readlines()
+        data = flines[:]
+        for i in range(len(data)):
+            data[i] = data[i].split(' ')
+            data[i].pop()
+            for j in range(len(data[i])):
+                data[i][j] = eval(data[i][j])
+        val_images = np.array(data)
+    
+        # make training_labels
+        with open(tr_lab,'r') as f: 
+            flines = f.readlines()
+        data = flines[1:]
+        for i in range(len(data)):
+            data[i] = eval(data[i])
+        tr_labels = np.array(data)
+        tr_labels = tr_labels.reshape((len(tr_labels),1))
+    
+        # make test_labels
+        with open(te_lab,'r') as f: 
+            flines = f.readlines()
+        data = flines[1:]
+        for i in range(len(data)):
+            data[i] = eval(data[i])
+        te_labels = np.array(data)
+        te_labels = te_labels.reshape((len(te_labels),1))
+        
+        # make validation_labels
+        with open(val_lab,'r') as f: 
+            flines = f.readlines()
+        data = flines[1:]
+        for i in range(len(data)):
+            data[i] = eval(data[i])
+        val_labels = np.array(data)
+        val_labels = val_labels.reshape((len(val_labels),1))
+        
+        return tr_images, tr_labels, val_images, val_labels, te_images, te_labels, len(tr_labels), len(val_labels), len(tr_labels)+len(val_labels)+len(te_labels)
 
+def draw(tr_labels, tr_hypo, te_labels, te_hypo, dirpath, t):
+    fig = plt.figure(figsize=(20,10))
+    ax1 = fig.add_subplot(121)
+    ax2 = fig.add_subplot(122)
+    ax1.title.set_text("CM_train")
+    ax2.title.set_text("CM_test")
+    ax1.set_ylabel("hypothesis (eV)")
+    ax1.set_xlabel("labels (eV)")
+    ax2.set_ylabel("hypothesis (eV)")
+    ax2.set_xlabel("labels (eV)")
+
+    tr_lim = max(max(tr_labels), max(tr_hypo)) 
+    te_lim = max(max(te_labels), max(te_hypo))
+
+    ax1.set_xlim([0,tr_lim])
+    ax1.set_ylim([0,tr_lim])
+    ax2.set_xlim([0,te_lim])
+    ax2.set_ylim([0,te_lim])
+  
+    ax1.scatter(tr_labels, tr_hypo, c='r', s=1)
+    ax1.plot([0,tr_lim], [0,tr_lim], c='k')
+    ax2.scatter(te_labels, te_hypo, c='r', s=1)
+    ax2.plot([0,te_lim], [0,te_lim], c='k')
+    
+    plt.savefig("{:s}/CM{:s}.png".format(dirpath, t))
 # In[ ]:
 
 
 parser = argparse.ArgumentParser(description='tensorflow training')
-parser.add_argument('-j','--job', choices=['train', 'retrain'], help='job option: "train" vs "retrain"')
+parser.add_argument('-j','--job', choices=['train', 'retrain','test'], help='job option: train, retrain or test')
 parser.add_argument('-f','--fin', default=None, help='write filename if you want to train first')
 parser.add_argument('-hl','--hiddenlayer', nargs='*', type=int, help='hidden layers: ex) 5 5 5 means three layers, five perceptrons each')
 parser.add_argument('-t','--intype', choices=['a','b','c'], help='a: inter-, intra-, diag / b: inter-, diag / c: inter-')
@@ -168,22 +191,10 @@ parser.add_argument('-bs','--batchsize', type=int, help='batch size')
 
 args = parser.parse_args()
 
-if args.job == 'train':
-    tr_images, tr_labels, val_images, val_labels, te_images, te_labels, lentrain, lenval, lentotal = train(args.fin, args.intype, args.ndata)
-    
-elif args.job == 'retrain':
-    tr_images, tr_labels, val_images, val_labels, te_images, te_labels, lentrain, lenval, lentotal = retrain()
-
+tr_images, tr_labels, val_images, val_labels, te_images, te_labels, lentrain, lenval, lentotal = makefeature(args.job, args.fin, args.intype, args.ndata)
 
 # In[ ]:
-
-if args.intype == 'a':
-    n_inputs = int(20*21/2)
-elif args.intype == 'b':
-    n_inputs = 20+10**2
-elif args.intype == 'c':
-    n_inputs = 10**2
-
+_, n_inputs = tr_images.shape
 HL = tuple(args.hiddenlayer)
 n_hidden = []
 n_output = 1
@@ -264,44 +275,43 @@ def batch(X, y, batch_size):
 
 config = tf.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=1, allow_soft_placement=True)
 with tf.Session(config=config) as sess:
-    import time
     t = time.strftime("%m%d%H%M%S", time.localtime(time.time()))
-
-    ckpt = tf.train.get_checkpoint_state('.')
-    if ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
-        saver.restore(sess, ckpt.model_checkpoint_path)
+    dirpath = "{:s}_{:d}".format(t, lentotal)
+    os.mkdir(dirpath)
+    ckpt = tf.train.get_checkpoint_state('validation')
+    if ckpt and ckpt.model_checkpoint_path:
+        saver.restore(sess, tf.train.latest_checkpoint('validation'))#ckpt.model_checkpoint_path))
+        print('retrain or test')
     else: 
         sess.run(init)
-
-    import os
-    dirpath = "{:s}{:s}_{:d}".format(t, args.intype, lentotal)
-
-    os.mkdir(dirpath)
-    
-    f = open('{:s}/CM_tf{:s}.txt'.format(dirpath,t),'w')            
-    for epoch in range(n_epochs):
-        for X_batch, y_batch in batch(tr_images, tr_labels, batch_size):
-            loss_, _ = sess.run([loss, training_op], feed_dict={X: X_batch, y: y_batch})
-        if epoch%100 == 0:
-            loss_valid, val_hypo = sess.run([loss, n_hidden[-1]], feed_dict={X:val_images, y:val_labels})
-            if os.path.exists("{:s}/validation".format(dirpath)) != True:
-                os.mkdir("{:s}/validation".format(dirpath))
-            if epoch == 0:
-                save_path = saver.save(sess, "{:s}/validation/CM_tf{:s}".format(dirpath, t), global_step=epoch)
-                loss_valid_before = loss_valid
-            else:
-                if loss_valid < loss_valid_before:
+        print('train')
+    if args.job == "train" or args.job == "retrain":
+        f = open('{:s}/CM_tf{:s}.txt'.format(dirpath,t),'w')            
+        for epoch in range(n_epochs):
+            for X_batch, y_batch in batch(tr_images, tr_labels, batch_size):
+                loss_, _ = sess.run([loss, training_op], feed_dict={X: X_batch, y: y_batch})
+            if epoch%100 == 0:
+                loss_tr = sess.run(loss, feed_dict={X:tr_images, y:tr_labels})
+                loss_valid, val_hypo = sess.run([loss, n_hidden[-1]], feed_dict={X:val_images, y:val_labels})
+                if os.path.exists("{:s}/validation".format(dirpath)) != True:
+                    os.mkdir("{:s}/validation".format(dirpath))
+                if epoch == 0:
                     save_path = saver.save(sess, "{:s}/validation/CM_tf{:s}".format(dirpath, t), global_step=epoch)
                     loss_valid_before = loss_valid
+                else:
+                    if loss_valid < loss_valid_before:
+                        save_path = saver.save(sess, "{:s}/validation/CM_tf{:s}".format(dirpath, t), global_step=epoch)
+                        loss_valid_before = loss_valid
+                f.write("{:d} loss: {:f} validation_loss: {:f}\n".format(epoch, loss_tr, loss_valid))
                 
-            f.write("{:d} loss: {:f} validation_loss {:f}\n".format(epoch, loss_, loss_valid))
-            
-        if loss_ < 1e-10:
-            break
-
-    f.write("final loss: {:f}\n".format(loss_))
-    f.write("start : {:s}, end : {:s}".format(t, time.strftime("%m%d%H%M%S", time.localtime(time.time())))) 
-    f.close()
+            if loss_tr < 1e-10:
+                break
+    
+        f.write("final loss: {:f}\n".format(loss_tr))
+        endtrain = time.strftime("%m%d%H%M%S", time.localtime(time.time()))
+        f.close()
+    tr_labels = tr_labels.reshape(lentrain)
+    val_labels = val_labels.reshape(lenval)
 
     strt = time.strftime("%m/%d %H:%M:%S", time.localtime(time.time()))
     tr_hypo = sess.run(n_hidden[-1], feed_dict={X:tr_images})
@@ -312,33 +322,7 @@ with tf.Session(config=config) as sess:
     tr_hypo = np.array(tr_hypo).reshape((lentrain,1))
     te_hypo = np.array(te_hypo).reshape((lentotal-(lentrain+lenval),1))
     
-    tr_labels = tr_labels.reshape(lentrain)
-    val_labels = val_labels.reshape(lenval)
-    
-    fig = plt.figure(figsize=(20,10))
-    ax1 = fig.add_subplot(121)
-    ax2 = fig.add_subplot(122)
-    ax1.title.set_text("CM_train")
-    ax2.title.set_text("CM_test")
-    ax1.set_ylabel("hypothesis (eV)")
-    ax1.set_xlabel("labels (eV)")
-    ax2.set_ylabel("hypothesis (eV)")
-    ax2.set_xlabel("labels (eV)")
-
-    tr_lim = max(max(tr_labels), max(tr_hypo)) 
-    te_lim = max(max(te_labels), max(te_hypo))
-
-    ax1.set_xlim([0,tr_lim])
-    ax1.set_ylim([0,tr_lim])
-    ax2.set_xlim([0,te_lim])
-    ax2.set_ylim([0,te_lim])
-  
-    ax1.scatter(tr_labels, tr_hypo, c='r', s=1)
-    ax1.plot([0,tr_lim], [0,tr_lim], c='k')
-    ax2.scatter(te_labels, te_hypo, c='r', s=1)
-    ax2.plot([0,te_lim], [0,te_lim], c='k')
-    
-    plt.savefig("{:s}/CM{:s}.png".format(dirpath, t))
+    draw(tr_labels, tr_hypo, te_labels, te_hypo, dirpath, t)
     
     save_path = saver.save(sess, "{:s}/CM_tf{:s}.ckpt".format(dirpath, t))
     writer = tf.summary.FileWriter("{:s}/logs".format(dirpath),sess.graph)
@@ -354,6 +338,8 @@ with tf.Session(config=config) as sess:
         hl += "{:d} ".format(HL[i])    
     g.write("Hidden Layer ( {:s})\n".format(hl))
     g.write("rmse : {:f} max_residual : {:f}\n".format(rmse, max_res))
+    if args.job == "train" or args.job == "retrain":
+        g.write("start : {:s}, end : {:s}".format(t, endtrain)) 
     g.write("log scale rmse : {:f} max_residual : {:f}\n".format(np.log10(rmse),np.log10(max_res)))
     g.write("test time for training set : {:s} ~ {:s}\n".format(strt, etrt))
     g.write("test time for test set : {:s} ~ {:s}\n".format(stet, etet))
@@ -383,16 +369,6 @@ with open('{:s}/tr_labels{:s}.txt'.format(dirpath, t),'w') as g:
     for i in range(len(tr_labels)):
         g.write('{:f}\n'.format(tr_labels[i]))
 
-with open('{:s}/val_hypo{:s}.txt'.format(dirpath, t),'w') as f:
-    f.write('validation hypothesis, eV\n')
-    for i in range(len(val_hypo)):
-        f.write('{:f}\n'.format(val_hypo[i][0]))
-
-with open('{:s}/val_labels{:s}.txt'.format(dirpath, t),'w') as g:
-    g.write('validation_labels, eV\n')
-    for i in range(len(val_labels)):
-        g.write('{:f}\n'.format(val_labels[i]))
-
 with open('{:s}/tr_images{:s}.txt'.format(dirpath, t),'w') as f:
     for i in range(len(tr_images)):
         for j in range(len(tr_images[i])):
@@ -405,14 +381,24 @@ with open('{:s}/te_images{:s}.txt'.format(dirpath, t),'w') as f:
             f.write('{:f} '.format(te_images[i][j]))
         f.write('\n')
 
-with open('{:s}/val_images{:s}.txt'.format(dirpath, t),'w') as f:
-    for i in range(len(val_images)):
-        for j in range(len(val_images[i])):
-            f.write('{:f} '.format(val_images[i][j]))
-        f.write('\n')
+if args.job == "train" or args.job == "retrain":
+    with open('{:s}/val_hypo{:s}.txt'.format(dirpath, t),'w') as f:
+        f.write('validation hypothesis, eV\n')
+        for i in range(len(val_hypo)):
+            f.write('{:f}\n'.format(val_hypo[i][0]))
+    
+    with open('{:s}/val_labels{:s}.txt'.format(dirpath, t),'w') as g:
+        g.write('validation_labels, eV\n')
+        for i in range(len(val_labels)):
+            g.write('{:f}\n'.format(val_labels[i]))
+    
+    with open('{:s}/val_images{:s}.txt'.format(dirpath, t),'w') as f:
+        for i in range(len(val_images)):
+            for j in range(len(val_images[i])):
+                f.write('{:f} '.format(val_images[i][j]))
+            f.write('\n')
 
-import os
-os.system("cp diff.py lossfunccall.py *sh.e* *sh.o* {:s}/.".format(dirpath))
-os.chdir(dirpath)
-os.system("~/anaconda3/bin/python lossfunccall.py")
-os.system("~/anaconda3/bin/python diff.py")
+    os.system("cp diff.py lossfunccall.py *sh.e* *sh.o* {:s}/.".format(dirpath))
+    os.chdir(dirpath)
+    os.system("~/anaconda3/bin/python lossfunccall.py")
+    os.system("~/anaconda3/bin/python diff.py")
