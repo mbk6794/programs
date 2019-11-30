@@ -232,7 +232,7 @@ with tf.name_scope("train"):
 
 
 init = tf.global_variables_initializer()
-saver = tf.train.Saver(max_to_keep=None)
+saver = tf.train.Saver(max_to_keep=10)
 
 
 # In[ ]:
