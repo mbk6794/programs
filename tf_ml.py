@@ -11,7 +11,7 @@ import numpy as np
 import tensorflow as tf
 import pandas as pd
 import argparse
-import time
+from datetime import datetime
 import glob
 import os
 
@@ -275,7 +275,7 @@ def batch(X, y, batch_size):
 
 config = tf.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=1, allow_soft_placement=True)
 with tf.Session(config=config) as sess:
-    t = time.strftime("%m%d%H%M%S", time.localtime(time.time()))
+    t = datetime.utcnow().strftime("%m%d%H%M%S")
     dirpath = "{:s}_{:d}".format(t, lentotal)
     os.mkdir(dirpath)
     ckpt = tf.train.get_checkpoint_state('validation')
@@ -308,17 +308,17 @@ with tf.Session(config=config) as sess:
                 break
     
         f.write("final loss: {:f}\n".format(loss_tr))
-        endtrain = time.strftime("%m%d%H%M%S", time.localtime(time.time()))
+        endtrain = datetime.utcnow().strftime("%m%d%H%M%S")
         f.close()
     tr_labels = tr_labels.reshape(lentrain)
     val_labels = val_labels.reshape(lenval)
 
-    strt = time.strftime("%m/%d %H:%M:%S.%f", time.localtime(time.time()))
+    strt = datetime.utcnow().strftime("%m/%d %H:%M:%S.%f")
     tr_hypo = sess.run(n_hidden[-1], feed_dict={X:tr_images})
-    etrt = time.strftime("%m/%d %H:%M:%S.%f", time.localtime(time.time()))
-    stet = time.strftime("%m/%d %H:%M:%S.%f", time.localtime(time.time()))
+    etrt = datetime.utcnow().strftime("%m/%d %H:%M:%S.%f")
+    stet = datetime.utcnow().strftime("%m/%d %H:%M:%S.%f")
     te_hypo = sess.run(n_hidden[-1], feed_dict={X:te_images})
-    etet = time.strftime("%m/%d %H:%M:%S.%f", time.localtime(time.time()))
+    etet = datetime.utcnow().strftime("%m/%d %H:%M:%S.%f")
     tr_hypo = np.array(tr_hypo).reshape((lentrain,1))
     te_hypo = np.array(te_hypo).reshape((lentotal-(lentrain+lenval),1))
     
@@ -339,7 +339,7 @@ with tf.Session(config=config) as sess:
     g.write("Hidden Layer ( {:s})\n".format(hl))
     g.write("rmse : {:f} max_residual : {:f}\n".format(rmse, max_res))
     if args.job == "train" or args.job == "retrain":
-        g.write("start : {:s}, end : {:s}".format(t, endtrain)) 
+        g.write("start : {:s}, end : {:s}\n".format(t, endtrain)) 
     g.write("log scale rmse : {:f} max_residual : {:f}\n".format(np.log10(rmse),np.log10(max_res)))
     g.write("test time for training set : {:s} ~ {:s}\n".format(strt, etrt))
     g.write("test time for test set : {:s} ~ {:s}\n".format(stet, etet))
@@ -402,3 +402,4 @@ if args.job == "train" or args.job == "retrain":
     os.chdir(dirpath)
     os.system("~/anaconda3/bin/python lossfunccall.py")
     os.system("~/anaconda3/bin/python diff.py")
+    os.system("cp ../adamop.sh .")
