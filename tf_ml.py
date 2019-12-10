@@ -59,8 +59,8 @@ def makefeature(tr, fin=None, intype=None, ndata=0):
           
             for i in range(1,n+1): 
                 columns.append('{:2d}-{:2d}'.format(i,i)) 
-            for i in range(1,n/2+1):
-                for j in range(n/2+1,n+1):
+            for i in range(1,int(n/2)+1):
+                for j in range(int(n/2)+1,n+1):
                     columns.append('{:2d}-{:2d}'.format(i,j))
                 
             Feature = np.zeros((len(molecule_dataframe),len(columns)))
@@ -72,8 +72,8 @@ def makefeature(tr, fin=None, intype=None, ndata=0):
         elif intype == 'c':
             columns = []
      
-            for i in range(1,n/2+1):
-                for j in range(n/2+1,n+1):
+            for i in range(1,int(n/2)+1):
+                for j in range(int(n/2)+1,n+1):
                     columns.append('{:2d}-{:2d}'.format(i,j))
                 
             Feature = np.zeros((len(molecule_dataframe),len(columns)))
