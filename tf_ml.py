@@ -31,12 +31,21 @@ def makefeature(tr, fin=None, intype=None, ndata=0):
         lentrain = int(lentotal*0.8)
         lentest = int((lentotal - lentrain)/2)
         lenval = int((lentotal - lentrain)/2)
+
+        r, c = np.array(molecule_dataframe).shape
+        n = 0
+
+        while True: #Determine the number of atoms in this system
+            if n*(n+1)/2 == (c-1):
+                break
+            n += 1
+ 
     
         if intype == 'a':
             columns = []
            
-            for i in range(1,21):
-                for j in range(i,21):
+            for i in range(1,n+1):
+                for j in range(i,n+1):
                     columns.append('{:2d}-{:2d}'.format(i,j))
                 
             Feature = np.zeros((len(molecule_dataframe),len(columns)))
@@ -48,10 +57,10 @@ def makefeature(tr, fin=None, intype=None, ndata=0):
         elif intype == 'b':
             columns = []
           
-            for i in range(1,21): 
+            for i in range(1,n+1): 
                 columns.append('{:2d}-{:2d}'.format(i,i)) 
-            for i in range(1,11):
-                for j in range(11,21):
+            for i in range(1,n/2+1):
+                for j in range(n/2+1,n+1):
                     columns.append('{:2d}-{:2d}'.format(i,j))
                 
             Feature = np.zeros((len(molecule_dataframe),len(columns)))
@@ -63,8 +72,8 @@ def makefeature(tr, fin=None, intype=None, ndata=0):
         elif intype == 'c':
             columns = []
      
-            for i in range(1,11):
-                for j in range(11,21):
+            for i in range(1,n/2+1):
+                for j in range(n/2+1,n+1):
                     columns.append('{:2d}-{:2d}'.format(i,j))
                 
             Feature = np.zeros((len(molecule_dataframe),len(columns)))
@@ -402,4 +411,4 @@ if args.job == "train" or args.job == "retrain":
     os.chdir(dirpath)
     os.system("~/anaconda3/bin/python lossfunccall.py")
     os.system("~/anaconda3/bin/python diff.py")
-    os.system("cp ../adamop.sh .")
+    os.system("cp ../TF_ML.sh .")
