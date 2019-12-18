@@ -214,7 +214,7 @@ n_output = 1
 
 X = tf.placeholder(tf.float32, shape=(None, n_inputs), name="X")
 y = tf.placeholder(tf.float32, shape=(None,1), name="y")
-
+is_training = tf.placeholder(tf.bool)
 
 # In[ ]:
 
@@ -222,14 +222,18 @@ y = tf.placeholder(tf.float32, shape=(None,1), name="y")
 with tf.name_scope("dnn"):
     if len(HL) == 1:
         n_hidden.append(tf.layers.dense(X, HL[0], name="hidden{:d}".format(1), activation=tf.nn.relu))
+        n_hidden[0] = tf.layers.dropout(n_hidden[0], 0.2, is_training)
         n_hidden.append(tf.layers.dense(n_hidden[0], n_output, name="output", activation=tf.nn.relu))
-    for i in range(len(HL)):
-        if i == 0:
-            n_hidden.append(tf.layers.dense(X, HL[i], name="hidden{:d}".format(i+1), activation=tf.nn.relu))
-        elif i>0 and i<len(HL)-1:
-            n_hidden.append(tf.layers.dense(n_hidden[i-1], HL[i], name="hidden{:d}".format(i+1), activation=tf.nn.relu))
-        elif i == len(HL)-1:
-            n_hidden.append(tf.layers.dense(n_hidden[i-1], n_output, name="output"))
+    else:
+        for i in range(len(HL)):
+            if i == 0:
+                n_hidden.append(tf.layers.dense(X, HL[i], name="hidden{:d}".format(i+1), activation=tf.nn.relu))
+                n_hidden[i] = tf.layers.dropout(n_hidden[i], 0.2, is_training)
+            elif i>0 and i<len(HL)-1:
+                n_hidden.append(tf.layers.dense(n_hidden[i-1], HL[i], name="hidden{:d}".format(i+1), activation=tf.nn.relu))
+                n_hidden[i] = tf.layers.dropout(n_hidden[i], 0.5, is_training)
+            elif i == len(HL)-1:
+                n_hidden.append(tf.layers.dense(n_hidden[i-1], n_output, name="output"))
 
 
 # In[ ]:
@@ -252,7 +256,7 @@ with tf.name_scope("train"):
 
 
 init = tf.global_variables_initializer()
-saver = tf.train.Saver(max_to_keep=10)
+saver = tf.train.Saver(max_to_keep=5)
 
 
 # In[ ]:
@@ -298,10 +302,10 @@ with tf.Session(config=config) as sess:
         f = open('{:s}/CM_tf{:s}.txt'.format(dirpath,t),'w')            
         for epoch in range(n_epochs):
             for X_batch, y_batch in batch(tr_images, tr_labels, batch_size):
-                loss_, _ = sess.run([loss, training_op], feed_dict={X: X_batch, y: y_batch})
+                loss_, _ = sess.run([loss, training_op], feed_dict={X: X_batch, y: y_batch, is_training: True})
             if epoch%100 == 0:
-                loss_tr = sess.run(loss, feed_dict={X:tr_images, y:tr_labels})
-                loss_valid, val_hypo = sess.run([loss, n_hidden[-1]], feed_dict={X:val_images, y:val_labels})
+                loss_tr = sess.run(loss, feed_dict={X:tr_images, y:tr_labels, is_training: True})
+                loss_valid, val_hypo = sess.run([loss, n_hidden[-1]], feed_dict={X:val_images, y:val_labels, is_training: True})
                 if os.path.exists("{:s}/validation".format(dirpath)) != True:
                     os.mkdir("{:s}/validation".format(dirpath))
                 if epoch == 0:
@@ -323,10 +327,10 @@ with tf.Session(config=config) as sess:
     val_labels = val_labels.reshape(lenval)
 
     strt = datetime.utcnow().strftime("%m/%d %H:%M:%S.%f")
-    tr_hypo = sess.run(n_hidden[-1], feed_dict={X:tr_images})
+    tr_hypo = sess.run(n_hidden[-1], feed_dict={X:tr_images, is_training: False})
     etrt = datetime.utcnow().strftime("%m/%d %H:%M:%S.%f")
     stet = datetime.utcnow().strftime("%m/%d %H:%M:%S.%f")
-    te_hypo = sess.run(n_hidden[-1], feed_dict={X:te_images})
+    te_hypo = sess.run(n_hidden[-1], feed_dict={X:te_images, is_training: False})
     etet = datetime.utcnow().strftime("%m/%d %H:%M:%S.%f")
     tr_hypo = np.array(tr_hypo).reshape((lentrain,1))
     te_hypo = np.array(te_hypo).reshape((lentotal-(lentrain+lenval),1))
@@ -353,6 +357,9 @@ with tf.Session(config=config) as sess:
     g.write("test time for training set : {:s} ~ {:s}\n".format(strt, etrt))
     g.write("test time for test set : {:s} ~ {:s}\n".format(stet, etet))
     g.close()
+    h = open("../score",'w')
+    h.write("{:f}".format(rmse))
+    h.close()
 
 
 # In[ ]:
@@ -411,4 +418,9 @@ if args.job == "train" or args.job == "retrain":
     os.chdir(dirpath)
     os.system("~/anaconda3/bin/python lossfunccall.py")
     os.system("~/anaconda3/bin/python diff.py")
-    os.system("cp ../TF_ML.sh .")
+    os.system("cp ../tf_ml.py .")
+    ### Just added for genetic algorithm
+    strHL = ""
+    for i in HL:
+        strHL += str(i)+" " 
+    os.system("~/anaconda3/bin/python tf_ml.py -j test -hl {:s}".format(strHL))
