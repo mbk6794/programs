@@ -31,34 +31,38 @@ def init_pop(npop, layer, neuron, gen, is_converge, old_pop=None):
     return pop
 
 def train(pop):
-    npop, _, _ = pop.shape()
+    npop, _, _ = pop.shape
     train_dr = glob.glob("train*")
     train_dr = list(filter(os.path.isdir, train_dr))
     for i in range(len(train_dr), npop):
         strHL = ''
+        strAF = ''
         strDR = ''
         for j in range(len(pop[i,:,0])):
             if pop[i,j,0] != 0:
                 strHL += str(int(pop[i,j,0]))+' '
+                strAF += str(int(pop[i,j,1]))+' '
                 strDR += str(int(pop[i,j,2]))+' '
         f = open("train{:02d}.sh".format(i),'w')
         f.write("#!/usr/bin/csh\n\n")
-        f.write("$HOME/anaconda3/bin/python tf_ml.py -j train -f complete_CoulombVector_Coupling -hl {:s} -dr {:s} -t c -epoch 10000 -bs 100 -o train{:02d}".format(strHL, strDR, i))
+        f.write("$HOME/anaconda3/bin/python tf_ml.py -j train -f complete_CoulombVector_Coupling -hl {:s} -af {:s} -dr {:s} -t c -epoch 5000 -bs 100 -o train{:02d}".format(strHL, strAF, strDR, i))
         f.close()
-        os.system("qsub -cwd train{:02d}.sh")
+        os.system("qsub -cwd train{:02d}.sh".format(i))
 
 def test(pop):
-    npop, _, _ = pop.shape()
+    npop, _, _ = pop.shape
     train_dr = glob.glob("train*")
     train_dr = list(filter(os.path.isdir, train_dr))
     for i in range(len(train_dr), npop):
         strHL = ''
-        for j in pop[i,:,0]:
+        strAF = ''
+        for j in range(len(pop[i,:,0])):
             if pop[i,j,0] != 0:
-                strHL += str(int(i))+' '
+                strHL += str(int(pop[i,j,0]))+' '
+                strAF += str(int(pop[i,j,1]))+' '
         f = open("train{:02d}/test{:02d}.sh".format(i),'w')
         f.write("#!/usr/bin/csh\n\n")
-        f.write("$HOME/anaconda3/bin/python tf_ml.py -j test -hl {:s} -o test{:02d}".format(strHL, i))
+        f.write("$HOME/anaconda3/bin/python tf_ml.py -j test -hl {:s} -af {:s} -o test{:02d}".format(strHL, strAF, i))
         f.close()
         os.chdir("train{:02d}".format(i))
         os.system("qsub -cwd test{:02d}.sh".format(i))
@@ -88,7 +92,7 @@ def crossover(npop, layer, neuron, pop, parents, best_index):
 def converge(pop):
     for i in range(1,len(pop)):
         diffpop = pop[0]-pop[i]
-        if np.linalg.norm(diffpop[:,0]) > 10 and np.linalg.norm(diffpop[:,1] != 0 and np.linalg.norm(diffpop[:,2] > 0.5:
+        if np.linalg.norm(diffpop[:,0]) > 10 and np.linalg.norm(diffpop[:,1]) != 0 and np.linalg.norm(diffpop[:,2]) > 0.5:
             return False
             break
     return True
@@ -107,8 +111,8 @@ def main():
 
     parser = argparse.ArgumentParser("Micro Genetic Algorithm for Multilayer Perceptron")
     parser.add_argument('-n', '--npop', type=int, help='the number of population (odd number please)')
-    parser.add_argument('-l', '--layer', type=int, help='upper limit of the number of layers')
-    parser.add_argument('-n', '--neuron', type=int, help='upper limit of the number of neurons in a layer')
+    parser.add_argument('-layer', '--layer', type=int, help='upper limit of the number of layers')
+    parser.add_argument('-neuron', '--neuron', type=int, help='upper limit of the number of neurons in a layer')
     parser.add_argument('-g', '--gen', type=int, help='the number of generation')
 
     args = parser.parse_args()
@@ -120,14 +124,17 @@ def main():
     is_converge = True
 
     scale_factor = round(np.log10(2*neuron*layer))
+    
+    result = open("microga.txt", 'w')
 
     for generation in range(gen):
-        print("Generation : {:03d}\n".format(generation))
+      
+        result.write("Generation : {:03d}\n".format(generation))
         idx = list(range(npop))
         group = np.zeros((int((npop-1)/2), 2))
         g_row, g_col = group.shape
         if generation == 0:
-            pop = init_pop(npop, layer, neuron, g, is_converge)
+            pop = init_pop(npop, layer, neuron, generation, is_converge)
         else:
             if is_converge == False:
                 pop = crossover(npop, layer, pop, neuron, parents, best_index)
@@ -138,7 +145,7 @@ def main():
         tcheck('train')
         test(pop)
         tcheck('test')
-        print(pop)
+        result.write(str(pop)+'\n')
 
         p, w = [], [] # p:performance, w:the size of trainable parameters
         fitness = [] # minimize fitness
@@ -154,8 +161,8 @@ def main():
         cp_fitness = fitness.copy()    
         best_index = idx.pop(fitness.index(min(fitness)))
         fitness.remove(min(fitness))
-        os.system('cp -r train{:02d} best{:02d}'.format(best_index, generation)
-        print(cp_fitness)
+        os.system('cp -r train{:02d} best{:02d}'.format(best_index, generation))
+        result.write(str(cp_fitness)+'\n')
         # Selection
         for r in range(g_row):
             for c in range(g_col):
@@ -163,7 +170,7 @@ def main():
         
         parents = []
         for r in range(g_row):
-            parents.append(cp_fitness.index(min(cp_fitness[group[r,0], cp_fitness[group[r,1])))
+            parents.append(cp_fitness.index(min(cp_fitness[group[r,0]], cp_fitness[group[r,1]])))
             if os.path.isdir("parents{:02d}".format(r)):
                 os.system("rm -rf parents{:02d}".format(r))
             os.system("cp -r train{:02d} parents{:02d}".format(parents[r],r))
@@ -175,7 +182,9 @@ def main():
 
         is_converge = converge(pop)
         if is_converge == True:
-            print("***Restart Micro Population***")
+            result.write(str("***Restart Micro Population***")+'\n')
+
+    result.close()
 
 if __name__ == '__main__':
     main()
