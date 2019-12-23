@@ -13,13 +13,7 @@ def init_pop(npop, layer, neuron, gen, is_converge, old_pop=None):
         pop = np.zeros((npop, layer, 3))
         pop[0] = old_pop[0]
 
-    if is_converge == False:
-        for i in range(1,1+int((npop-1)/2)):
-            pop[i] = old_pop[i]
-    else:
-        i = 1
-
-    for j in range(i,npop):
+    for j in range(1,npop):
         for k in range(layer):
             pop[j,k,0] = np.random.randint(0,neuron+1) # the number of neurons
             if pop[j,k,0] != 0:
@@ -70,37 +64,33 @@ def test(pop):
         os.system("qsub -cwd test{:02d}.sh".format(i))
         os.chdir('..')
 
-def crossover(npop, layer, neuron, pop, parents, best_index, fitness):
-    nest_gen = np.zeros((npop, layer, 3)) 
-    new_fitness = []
+def crossover(npop, layer, neuron, pop, parents, best_index):
+    next_gen = np.zeros((npop, layer, 3)) 
     next_gen[0] = pop[best_index] # the best gene at the top
-    new_fitness.append(fitness[best_index])
     for i in range(len(parents)):
         next_gen[i+1] = pop[parents[i]]
-        new_fitness.append(fitness[parents[i]])
     for j in range(int(len(parents)/2)):
         head1 = pop[parents[2*j], :int(layer/2), :]
-        head2 = pop[parents[2*j+1, :int(layer/2), :]
+        head2 = pop[parents[2*j+1], :int(layer/2), :]
         tail1 = pop[parents[2*j], int(layer/2):, :]
-        tail2 = pop[parents[2*j+1, int(layer/2):, :]
+        tail2 = pop[parents[2*j+1], int(layer/2):, :]
         baby1 = np.vstack((head1, tail2))
         baby2 = np.vstack((head2, tail1))
         if np.linalg.norm(baby1[:,0]) == 0:
             baby1 = init_pop(1,layer,neuron,1)[0]
         if np.linalg.norm(baby2[:,0]) == 0:
             baby2 = init_pop(1,layer,neuron,1)[0]
-        next_gen[i+2*j] = baby1
-        next_gen[i+2*(j)+1] = baby2
-        new_fitness.extend([9999,9999])
+        next_gen[i+2*j+2] = baby1
+        next_gen[i+2*j+3] = baby2
          
-    return next_gen, new_fitness
+    return next_gen
 
 def converge(pop):
     for i in range(1,len(pop)):
         diffpop = pop[0]-pop[i]
         if np.linalg.norm(diffpop[:,0]) > 10 and np.linalg.norm(diffpop[:,1] != 0 and np.linalg.norm(diffpop[:,2] > 0.5:
-            break
             return False
+            break
     return True
 
 def tcheck(word):
@@ -133,18 +123,22 @@ def main():
 
     for generation in range(gen):
         print("Generation : {:03d}\n".format(generation))
-        if generation == 0:
-            pop = init_pop(npop, layer, neuron, g, is_converge)
-        else:
-            pop = init_pop(npop, layer, neuron, g, is_converge, new_pop)            
         idx = list(range(npop))
         group = np.zeros((int((npop-1)/2), 2))
         g_row, g_col = group.shape
+        if generation == 0:
+            pop = init_pop(npop, layer, neuron, g, is_converge)
+        else:
+            if is_converge == False:
+                pop = crossover(npop, layer, pop, neuron, parents, best_index)
+            else:
+                pop = init_pop(npop, layer, neuron, generation, is_converge, pop)            
         
         train(pop)
         tcheck('train')
         test(pop)
         tcheck('test')
+        print(pop)
 
         p, w = [], [] # p:performance, w:the size of trainable parameters
         fitness = [] # minimize fitness
@@ -156,11 +150,12 @@ def main():
             p_star = np.array(p) / np.linalg.norm(p) # normalize p vector
             w_star = np.log10(np.array(w)) # scale order of w
             fitness.append(scale_factor*(1-0.5)*p_star[i]+0.5*w_star[i])
-    
+
+        cp_fitness = fitness.copy()    
         best_index = idx.pop(fitness.index(min(fitness)))
         fitness.remove(min(fitness))
         os.system('cp -r train{:02d} best{:02d}'.format(best_index, generation)
-        
+        print(cp_fitness)
         # Selection
         for r in range(g_row):
             for c in range(g_col):
@@ -168,7 +163,7 @@ def main():
         
         parents = []
         for r in range(g_row):
-            parents.append(fitness.index(min(fitness[group[r,0], fitness[group[r,1])))
+            parents.append(cp_fitness.index(min(cp_fitness[group[r,0], cp_fitness[group[r,1])))
             if os.path.isdir("parents{:02d}".format(r)):
                 os.system("rm -rf parents{:02d}".format(r))
             os.system("cp -r train{:02d} parents{:02d}".format(parents[r],r))
@@ -178,10 +173,9 @@ def main():
         for r in range(g_row):
             os.system("mv parents{:02d} train{:02d}".format(r, r+1))
 
-        new_pop, new_fitness = crossover(npop, layer, pop, neuron, parents, best_index, fitness)
-        train(new_pop[1+len(parents):])
-        tcheck('train')
-        test(new_pop[1+len(parents):]
-        tcheck('test')
-        is_converge = converge(new_pop)
-        
+        is_converge = converge(pop)
+        if is_converge == True:
+            print("***Restart Micro Population***")
+
+if __name__ == '__main__':
+    main()
