@@ -193,10 +193,13 @@ parser = argparse.ArgumentParser(description='tensorflow training')
 parser.add_argument('-j','--job', choices=['train', 'retrain','test'], help='job option: train, retrain or test')
 parser.add_argument('-f','--fin', default=None, help='write filename if you want to train first')
 parser.add_argument('-hl','--hiddenlayer', nargs='*', type=int, help='hidden layers: ex) 5 5 5 means three layers, five perceptrons each')
+parser.add_argument('-af','--actfunc', nargs='*', type=int, default=None, help='the activation function of each layer')
+parser.add_argument('-dr','--drop', nargs='*', type=float, default=None, help='the rate of dropout of each layer')
 parser.add_argument('-t','--intype', choices=['a','b','c'], help='a: inter-, intra-, diag / b: inter-, diag / c: inter-')
 parser.add_argument('-nd','--ndata', type=int, default=None, help='the number of total data set, if None, whole data will be used')
 parser.add_argument('-epoch','--epoch', type=int, help='max number of epochs')
 parser.add_argument('-bs','--batchsize', type=int, help='batch size')
+parser.add_argument('-o','--output', default=None, help='output directory name')
 
 args = parser.parse_args()
 
@@ -205,6 +208,18 @@ tr_images, tr_labels, val_images, val_labels, te_images, te_labels, lentrain, le
 # In[ ]:
 _, n_inputs = tr_images.shape
 HL = tuple(args.hiddenlayer)
+if args.drop != None:
+    DR = tuple(args.drop)
+else:
+    DR = ()
+afdic = {0:tf.nn.sigmoid, 1:tf.nn.tanh, 2:tf.nn.relu}
+AF = []
+if args.actfunc != None:
+    for i in args.actfunc:
+        AF.append(afdic[i])
+    AF = tuple(AF)
+else:
+    AF = ()
 n_hidden = []
 n_output = 1
 
@@ -220,18 +235,25 @@ is_training = tf.placeholder(tf.bool)
 
 
 with tf.name_scope("dnn"):
-    if len(HL) == 1:
-        n_hidden.append(tf.layers.dense(X, HL[0], name="hidden{:d}".format(1), activation=tf.nn.relu))
-        n_hidden[0] = tf.layers.dropout(n_hidden[0], 0.2, is_training)
-        n_hidden.append(tf.layers.dense(n_hidden[0], n_output, name="output", activation=tf.nn.relu))
-    else:
-        for i in range(len(HL)):
+    for i in range(len(HL)):
             if i == 0:
-                n_hidden.append(tf.layers.dense(X, HL[i], name="hidden{:d}".format(i+1), activation=tf.nn.relu))
-                n_hidden[i] = tf.layers.dropout(n_hidden[i], 0.2, is_training)
+                if len(AF) == 0:
+                    n_hidden.append(tf.layers.dense(X, HL[i], name="hidden{:d}".format(i+1), activation=tf.nn.relu))
+                else:
+                    n_hidden.append(tf.layers.dense(X, HL[i], name="hidden{:d}".format(i+1), activation=AF[i]))
+                if len(DR) == 0:
+                    n_hidden[i] = tf.layers.dropout(n_hidden[i], 0.2, is_training)
+                else:
+                    n_hidden[0] = tf.layers.dropout(n_hidden[0], DR[i], is_training)                    
             elif i>0 and i<len(HL)-1:
-                n_hidden.append(tf.layers.dense(n_hidden[i-1], HL[i], name="hidden{:d}".format(i+1), activation=tf.nn.relu))
-                n_hidden[i] = tf.layers.dropout(n_hidden[i], 0.5, is_training)
+                if len(AF) == 0:
+                    n_hidden.append(tf.layers.dense(n_hidden[i-1], HL[i], name="hidden{:d}".format(i+1), activation=tf.nn.relu))
+                else:
+                    n_hidden.append(tf.layers.dense(n_hidden[i-1], HL[i], name="hidden{:d}".format(i+1), activation=AF[i]))
+                if len(DR) == 0:
+                    n_hidden[i] = tf.layers.dropout(n_hidden[i], 0.5, is_training)
+                else:
+                    n_hidden[i] = tf.layers.dropout(n_hidden[i], DR[i], is_training) 
             elif i == len(HL)-1:
                 n_hidden.append(tf.layers.dense(n_hidden[i-1], n_output, name="output"))
 
@@ -289,7 +311,10 @@ def batch(X, y, batch_size):
 config = tf.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=1, allow_soft_placement=True)
 with tf.Session(config=config) as sess:
     t = datetime.utcnow().strftime("%m%d%H%M%S")
-    dirpath = "{:s}_{:d}".format(t, lentotal)
+    if args.output == None:
+        dirpath = "{:s}_{:d}".format(t, lentotal)
+    else:
+        dirpath = args.output
     os.mkdir(dirpath)
     ckpt = tf.train.get_checkpoint_state('validation')
     if ckpt and ckpt.model_checkpoint_path:
@@ -357,9 +382,14 @@ with tf.Session(config=config) as sess:
     g.write("test time for training set : {:s} ~ {:s}\n".format(strt, etrt))
     g.write("test time for test set : {:s} ~ {:s}\n".format(stet, etet))
     g.close()
-    h = open("../score",'w')
-    h.write("{:f}".format(rmse))
-    h.close()
+    if args.job == 'test':
+        h = open("../score",'w')
+        h.write("{:f}\n".format(rmse))
+        n_hl = 0
+        for nhl in HL:
+            n_hl += nhl
+        h.write("{:d}".format(n_hl*2))
+        h.close()
 
 
 # In[ ]:
