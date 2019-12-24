@@ -137,7 +137,7 @@ def main():
             pop = init_pop(npop, layer, neuron, generation, is_converge)
         else:
             if is_converge == False:
-                pop = crossover(npop, layer, pop, neuron, parents, best_index)
+                pop = crossover(npop, layer, neuron, pop, parents, best_index)
             else:
                 pop = init_pop(npop, layer, neuron, generation, is_converge, pop)            
         
