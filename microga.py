@@ -30,9 +30,9 @@ def init_pop(npop, layer, neuron, gen, is_converge, old_pop=None):
             pop[j,k,2] = round(np.random.random(),2)
     return pop
 
-def train(pop):
+def train(pop, trainout):
     npop, _, _ = pop.shape
-    train_dr = glob.glob("train*")
+    train_dr = glob.glob("{:s}*".format(trainout))
     train_dr = list(filter(os.path.isdir, train_dr))
     for i in range(len(train_dr), npop):
         strHL = ''
@@ -42,16 +42,16 @@ def train(pop):
             if pop[i,j,0] != 0:
                 strHL += str(int(pop[i,j,0]))+' '
                 strAF += str(int(pop[i,j,1]))+' '
-                strDR += str(int(pop[i,j,2]))+' '
-        f = open("train{:02d}.sh".format(i),'w')
+                strDR += str(round(pop[i,j,2],2))+' '
+        f = open("{:s}{:02d}.sh".format(trainout, i),'w')
         f.write("#!/usr/bin/csh\n\n")
-        f.write("$HOME/anaconda3/bin/python tf_ml.py -j train -f complete_CoulombVector_Coupling -hl {:s} -af {:s} -dr {:s} -t c -epoch 5000 -bs 100 -o train{:02d}".format(strHL, strAF, strDR, i))
+        f.write("$HOME/anaconda3/bin/python tf_ml.py -j train -f complete_CoulombVector_Coupling -hl {:s} -af {:s} -dr {:s} -t c -epoch 3000 -bs 100 -o {:s}{:02d}".format(strHL, strAF, strDR, trainout, i))
         f.close()
-        os.system("qsub -cwd train{:02d}.sh".format(i))
+        os.system("qsub -cwd {:s}{:02d}.sh".format(trainout, i))
 
-def test(pop):
+def test(pop, trainout):
     npop, _, _ = pop.shape
-    train_dr = glob.glob("train*")
+    train_dr = glob.glob("{:s}*".format(trainout))
     train_dr = list(filter(os.path.isdir, train_dr))
     for i in range(len(train_dr), npop):
         strHL = ''
@@ -60,11 +60,11 @@ def test(pop):
             if pop[i,j,0] != 0:
                 strHL += str(int(pop[i,j,0]))+' '
                 strAF += str(int(pop[i,j,1]))+' '
-        f = open("train{:02d}/test{:02d}.sh".format(i),'w')
+        f = open("{:s}{:02d}/test{:02d}.sh".format(trainout,i,i),'w')
         f.write("#!/usr/bin/csh\n\n")
         f.write("$HOME/anaconda3/bin/python tf_ml.py -j test -hl {:s} -af {:s} -o test{:02d}".format(strHL, strAF, i))
         f.close()
-        os.chdir("train{:02d}".format(i))
+        os.chdir("{:s}{:02d}".format(trainout, i))
         os.system("qsub -cwd test{:02d}.sh".format(i))
         os.chdir('..')
 
@@ -114,6 +114,7 @@ def main():
     parser.add_argument('-layer', '--layer', type=int, help='upper limit of the number of layers')
     parser.add_argument('-neuron', '--neuron', type=int, help='upper limit of the number of neurons in a layer')
     parser.add_argument('-g', '--gen', type=int, help='the number of generation')
+    parser.add_argument('-to', '--trainout', default=None, help='csh file name for training')
 
     args = parser.parse_args()
 
@@ -121,6 +122,9 @@ def main():
     layer = args.layer 
     neuron = args.neuron
     gen = args.gen
+    trainout = args.trainout
+    if trainout == None:
+        trainout = "train"
     is_converge = True
 
     scale_factor = round(np.log10(2*neuron*layer))
@@ -141,16 +145,16 @@ def main():
             else:
                 pop = init_pop(npop, layer, neuron, generation, is_converge, pop)            
         
-        train(pop)
-        tcheck('train')
-        test(pop)
+        train(pop, trainout)
+        tcheck(trainout)
+        test(pop, trainout)
         tcheck('test')
         result.write(str(pop)+'\n')
 
         p, w = [], [] # p:performance, w:the size of trainable parameters
         fitness = [] # minimize fitness
         for i in range(npop):
-            with open("train{:02d}/score".format(i), 'r') as f:
+            with open("{:s}{:02d}/score".format(trainout, i), 'r') as f:
                 flines = f.readlines()
             p.append(eval(flines[0]))
             w.append(eval(flines[1]))
@@ -161,7 +165,7 @@ def main():
         cp_fitness = fitness.copy()    
         best_index = idx.pop(fitness.index(min(fitness)))
         fitness.remove(min(fitness))
-        os.system('cp -r train{:02d} best{:02d}'.format(best_index, generation))
+        os.system('cp -r {:s}{:02d} best{:02d}'.format(trainout, best_index, generation))
         result.write(str(cp_fitness)+'\n')
         # Selection
         for r in range(g_row):
@@ -170,15 +174,15 @@ def main():
         
         parents = []
         for r in range(g_row):
-            parents.append(cp_fitness.index(min(cp_fitness[group[r,0]], cp_fitness[group[r,1]])))
+            parents.append(cp_fitness.index(min(cp_fitness[int(group[r,0])], cp_fitness[int(group[r,1])])))
             if os.path.isdir("parents{:02d}".format(r)):
                 os.system("rm -rf parents{:02d}".format(r))
-            os.system("cp -r train{:02d} parents{:02d}".format(parents[r],r))
+            os.system("cp -r {:s}{:02d} parents{:02d}".format(trainout, parents[r],r))
 
-        os.system("rm -rf train*")
-        os.system("mv best{:02d} train00".format(generation))
+        os.system("rm -rf {:s}*".format(trainout))
+        os.system("mv best{:02d} {:s}00".format(generation, trainout))
         for r in range(g_row):
-            os.system("mv parents{:02d} train{:02d}".format(r, r+1))
+            os.system("mv parents{:02d} {:s}{:02d}".format(r, trainout, r+1))
 
         is_converge = converge(pop)
         if is_converge == True:
