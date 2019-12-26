@@ -45,7 +45,7 @@ def train(pop, trainout):
                 strDR += str(round(pop[i,j,2],2))+' '
         f = open("{:s}{:02d}.sh".format(trainout, i),'w')
         f.write("#!/usr/bin/csh\n\n")
-        f.write("$HOME/anaconda3/bin/python tf_ml.py -j train -f complete_CoulombVector_Coupling -hl {:s} -af {:s} -dr {:s} -t c -epoch 3000 -bs 100 -o {:s}{:02d}".format(strHL, strAF, strDR, trainout, i))
+        f.write("$HOME/anaconda3/bin/python tf_ml.py -j train -f complete_CoulombVector_Coupling -hl {:s}-af {:s}-dr {:s}-t c -epoch 3000 -bs 100 -o {:s}{:02d}".format(strHL, strAF, strDR, trainout, i))
         f.close()
         os.system("qsub -cwd {:s}{:02d}.sh".format(trainout, i))
 
@@ -62,7 +62,7 @@ def test(pop, trainout):
                 strAF += str(int(pop[i,j,1]))+' '
         f = open("{:s}{:02d}/test{:02d}.sh".format(trainout,i,i),'w')
         f.write("#!/usr/bin/csh\n\n")
-        f.write("$HOME/anaconda3/bin/python tf_ml.py -j test -hl {:s} -af {:s} -o test{:02d}".format(strHL, strAF, i))
+        f.write("$HOME/anaconda3/bin/python tf_ml.py -j test -hl {:s}-af {:s}-o test{:02d}".format(strHL, strAF, i))
         f.close()
         os.chdir("{:s}{:02d}".format(trainout, i))
         os.system("qsub -cwd test{:02d}.sh".format(i))
@@ -129,11 +129,9 @@ def main():
 
     scale_factor = round(np.log10(2*neuron*layer))
     
-    result = open("microga.txt", 'w')
-
     for generation in range(gen):
-      
-        result.write("Generation : {:03d}\n".format(generation))
+        with open("microga.txt", 'a') as result:
+            result.write("Generation : {:03d}\n".format(generation))
         idx = list(range(npop))
         group = np.zeros((int((npop-1)/2), 2))
         g_row, g_col = group.shape
@@ -149,7 +147,8 @@ def main():
         tcheck(trainout)
         test(pop, trainout)
         tcheck('test')
-        result.write(str(pop)+'\n')
+        with open("microga.txt", 'a') as result:
+            result.write(str(pop)+'\n')
 
         p, w = [], [] # p:performance, w:the size of trainable parameters
         fitness = [] # minimize fitness
@@ -158,15 +157,17 @@ def main():
                 flines = f.readlines()
             p.append(eval(flines[0]))
             w.append(eval(flines[1]))
-            p_star = np.array(p) / np.linalg.norm(p) # normalize p vector
-            w_star = np.log10(np.array(w)) # scale order of w
-            fitness.append(scale_factor*(1-0.5)*p_star[i]+0.5*w_star[i])
+        p_star = np.array(p) / np.linalg.norm(p) # normalize p vector
+        w_star = np.log10(np.array(w)) # scale order of w
+        for i in range(npop):
+            fitness.append(scale_factor*(1-0.7)*p_star[i]+0.3*w_star[i])
 
         cp_fitness = fitness.copy()    
         best_index = idx.pop(fitness.index(min(fitness)))
         fitness.remove(min(fitness))
         os.system('cp -r {:s}{:02d} best{:02d}'.format(trainout, best_index, generation))
-        result.write(str(cp_fitness)+'\n')
+        with open("microga.txt", 'a') as result:
+            result.write(str(cp_fitness)+'\n')
         # Selection
         for r in range(g_row):
             for c in range(g_col):
@@ -186,7 +187,8 @@ def main():
 
         is_converge = converge(pop)
         if is_converge == True:
-            result.write(str("***Restart Micro Population***")+'\n')
+            with open("microga.txt", 'a') as result:
+                result.write(str("***Restart Micro Population***")+'\n')
 
     result.close()
 
