@@ -5,14 +5,16 @@ import glob
 import numpy as np
 
 def init_pop(npop, layer, neuron, gen, is_converge, old_pop=None):
+    pop = np.zeros((npop, layer, 3))
     if gen == 0:
-        pop = np.zeros((npop, layer, 3))
         pop[0,:5] = np.array([[50, 2, 0.2],[50, 2, 0.5],[50, 2, 0.5],[50, 2, 0.5],[50, 2, 0.5]])
-    else:
-        pop = np.zeros((npop, layer, 3))
+    elif is_converge == 1:
         pop[0] = old_pop[0]
+    elif is_converge == 2:
+        pop[0] = old_pop[0]
+        pop[1] = old_pop[1] 
 
-    for j in range(1,npop): # if you want to set the one of the first genes, set the range from 1 to npop
+    for j in range(is_converge,npop): # if you want to set the one of the first genes, set the range from 1 to npop
         for k in range(layer):
             pop[j,k,0] = np.random.randint(0,neuron+1) # the number of neurons
             if pop[j,k,0] != 0:
@@ -89,19 +91,19 @@ def crossover(npop, layer, neuron, pop, parents, best_index):
     return next_gen
 
 def converge(pop):
-    result = False
+    result = 0
     for i in range(1,len(pop)-1):
         diffpop = pop[i]-pop[i+1]
         if np.linalg.norm(diffpop[:,0]) != 0 or np.linalg.norm(diffpop[:,1]) != 0 or np.linalg.norm(diffpop[:,2]) != 0:
-            result = False
+            result = 0
             break
         else:
-            result = True
-    if result != True:
+            result = 2
+    if result == 2:
         for i in range(1,len(pop)):
             diffpop = pop[0]-pop[i]
-            if np.linalg.norm(diffpop[:,0]) > 10 and np.linalg.norm(diffpop[:,1]) != 0 and np.linalg.norm(diffpop[:,2]) > 0.5:
-                result = False
+            if np.linalg.norm(diffpop[:,0]) < 10 and np.linalg.norm(diffpop[:,1]) == 0 and np.linalg.norm(diffpop[:,2]) < 0.5:
+                result = 1
                 break
 
     return result 
@@ -115,6 +117,49 @@ def tcheck(word):
             break
         time.sleep(60)
 
+def ckpt_pop(npop, layer):
+    pop = np.zeros((npop, layer, 3))
+    with open('microga.txt','r') as f:
+        flines = f.readlines()
+    flines.reverse()
+    for i in range(len(flines)):
+        if 'Generation' in flines[i]:
+            break
+    data = flines[:i]
+    data.reverse()
+    while '\n' in data:
+        data.remove('\n')
+    for i in range(len(data)):
+        while '[' in data[i]:
+            data[i] = data[i].replace('[','')
+        while ']' in data[i]:
+            data[i] = data[i].replace(']','')
+    for i in range(npop):
+        for j in range(layer):
+            data[layer*i + j] = data[layer*i + j].split(' ')
+            while '' in data[layer*i + j]:
+                data[layer*i + j].remove('')
+            for k in range(3):
+                pop[i,j,k] = eval(data[layer*i + j][k])
+    fitness = data[layer*i + j + 1]
+    fitness = fitness.split(',')
+    for i in range(len(fitness)):
+        fitness[i] = eval(fitness[i]) 
+
+    return pop, fitness
+
+def selection(group, cp_fitness, idx, trainout):
+    g_row, g_col = group.shape
+    for r in range(g_row):
+        for c in range(g_col):
+            group[r,c] = idx.pop(idx.index(random.choice(idx))) # Save indices for tournament
+    
+    parents = []
+    for r in range(g_row):
+        parents.append(cp_fitness.index(min(cp_fitness[int(group[r,0])], cp_fitness[int(group[r,1])])))
+
+    return parents
+
 def main():
     import argparse
     
@@ -124,6 +169,7 @@ def main():
     parser.add_argument('-neuron', '--neuron', type=int, help='upper limit of the number of neurons in a layer')
     parser.add_argument('-g', '--gen', type=int, help='the number of generation')
     parser.add_argument('-to', '--trainout', default=None, help='csh file name for training')
+    parser.add_argument('-sp', '--startpoint', type=int, default=0, help='if you want to start continuously, write the number of starting generation')
     
     args = parser.parse_args()
     
@@ -131,23 +177,46 @@ def main():
     layer = args.layer 
     neuron = args.neuron
     gen = args.gen
+    sp = args.startpoint
+    if sp == 0:
+        ckpt = False
+    else:
+        ckpt = True
     trainout = args.trainout
     if trainout == None:
         trainout = "train"
-    is_converge = True
+    is_converge = 0
     
     scale_factor = round(np.log10(2*neuron*layer))
-    
-    for generation in range(gen):
+
+    ### Here, read the popultaion from microga.txt ###
+    if ckpt == True:
+        pop, fitness = ckpt_pop(npop, layer)
+        idx = list(range(npop))
+        group = np.zeros((int((npop-1)/2), 2))
+        g_row, g_col = group.shape
+        is_converge = converge(pop)
+        if is_converge == 0:
+            best_index = idx.pop(fitness.index(min(fitness)))
+            parents = selection(group, fitness, idx, trainout)        
+        elif is_converge == 1:
+            for r in range(g_row):
+                os.system("rm -rf {:s}{:02d}".format(trainout, r+1))
+        elif is_converge == 2:
+            for r in range(g_row-1):
+                os.system("rm -rf {:s}{:02d}".format(trainout, r+2))
+
+    for generation in range(sp, sp+gen):
         with open("microga.txt",'a') as result:
             result.write("Generation : {:03d}\n".format(generation))
         idx = list(range(npop))
         group = np.zeros((int((npop-1)/2), 2))
         g_row, g_col = group.shape
+
         if generation == 0:
             pop = init_pop(npop, layer, neuron, generation, is_converge)
         else:
-            if is_converge == False:
+            if is_converge == 0:
                 pop = crossover(npop, layer, neuron, pop, parents, best_index)
             else:
                 pop = init_pop(npop, layer, neuron, generation, is_converge, pop)            
@@ -177,14 +246,10 @@ def main():
         os.system('cp -r {:s}{:02d} best{:02d}'.format(trainout, best_index, generation))
         with open("microga.txt",'a') as result:
             result.write(str(cp_fitness)+'\n')
+
         # Selection
+        parents = selection(group, cp_fitness, idx, trainout)
         for r in range(g_row):
-            for c in range(g_col):
-                group[r,c] = idx.pop(idx.index(random.choice(idx))) # Save indices for tournament
-        
-        parents = []
-        for r in range(g_row):
-            parents.append(cp_fitness.index(min(cp_fitness[int(group[r,0])], cp_fitness[int(group[r,1])])))
             if os.path.isdir("parents{:02d}".format(r)):
                 os.system("rm -rf parents{:02d}".format(r))
             os.system("cp -r {:s}{:02d} parents{:02d}".format(trainout, parents[r],r))
@@ -195,7 +260,14 @@ def main():
             os.system("mv parents{:02d} {:s}{:02d}".format(r, trainout, r+1))
     
         is_converge = converge(pop)
-        if is_converge == True:
+        if is_converge == 1:
+            for r in range(g_row):
+                os.system("rm -rf {:s}{:02d}".format(trainout, r+1))
+        elif is_converge == 2:
+            for r in range(g_row-1):
+                os.system("rm -rf {:s}{:02d}".format(trainout, r+2))
+
+        if is_converge != 0:
             with open("microga.txt",'a') as result:
                 result.write(str("***Restart Micro Population***")+'\n')
 
