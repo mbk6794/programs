@@ -141,24 +141,8 @@ def ckpt_pop(npop, layer):
                 data[layer*i + j].remove('')
             for k in range(3):
                 pop[i,j,k] = eval(data[layer*i + j][k])
-    fitness = data[layer*i + j + 1]
-    fitness = fitness.split(',')
-    for i in range(len(fitness)):
-        fitness[i] = eval(fitness[i]) 
 
-    return pop, fitness
-
-def selection(group, cp_fitness, idx, trainout):
-    g_row, g_col = group.shape
-    for r in range(g_row):
-        for c in range(g_col):
-            group[r,c] = idx.pop(idx.index(random.choice(idx))) # Save indices for tournament
-    
-    parents = []
-    for r in range(g_row):
-        parents.append(cp_fitness.index(min(cp_fitness[int(group[r,0])], cp_fitness[int(group[r,1])])))
-
-    return parents
+    return pop
 
 def main():
     import argparse
@@ -191,15 +175,12 @@ def main():
 
     ### Here, read the popultaion from microga.txt ###
     if ckpt == True:
-        pop, fitness = ckpt_pop(npop, layer)
+        pop = ckpt_pop(npop, layer)
         idx = list(range(npop))
         group = np.zeros((int((npop-1)/2), 2))
         g_row, g_col = group.shape
         is_converge = converge(pop)
-        if is_converge == 0:
-            best_index = idx.pop(fitness.index(min(fitness)))
-            parents = selection(group, fitness, idx, trainout)        
-        elif is_converge == 1:
+        if is_converge == 1:
             for r in range(g_row):
                 os.system("rm -rf {:s}{:02d}".format(trainout, r+1))
         elif is_converge == 2:
@@ -246,10 +227,14 @@ def main():
         os.system('cp -r {:s}{:02d} best{:02d}'.format(trainout, best_index, generation))
         with open("microga.txt",'a') as result:
             result.write(str(cp_fitness)+'\n')
-
         # Selection
-        parents = selection(group, cp_fitness, idx, trainout)
         for r in range(g_row):
+            for c in range(g_col):
+                group[r,c] = idx.pop(idx.index(random.choice(idx))) # Save indices for tournament
+        
+        parents = []
+        for r in range(g_row):
+            parents.append(cp_fitness.index(min(cp_fitness[int(group[r,0])], cp_fitness[int(group[r,1])])))
             if os.path.isdir("parents{:02d}".format(r)):
                 os.system("rm -rf parents{:02d}".format(r))
             os.system("cp -r {:s}{:02d} parents{:02d}".format(trainout, parents[r],r))
