@@ -25,13 +25,20 @@ def makefeature(tr, fin=None, intype=None, ndata=0):
      
         molecule_dataframe = molecule_dataframe.reindex(np.random.permutation(molecule_dataframe.index))
         if ndata != None:
-            lentotal = ndata
+            if ndata <= len(molecule_dataframe):
+                lentrain = ndata
+            else:
+                lentrain = int(len(molecule_dataframe) * 0.8)
         else:
-            lentotal = len(molecule_dataframe)
-        lentrain = int(lentotal*0.8)
-        lentest = int((lentotal - lentrain)/2)
-        lenval = int((lentotal - lentrain)/2)
+            lentrain = int(len(molecule_dataframe) * 0.8)
+        if lentrain <= int(len(molecule_dataframe) * 0.8):
+            lentest = int(lentrain / 8)
+            lenval = int(lentrain / 8)
+        else:
+            lentest = int((lentotal - lentrain)/2)
+            lenval = int((lentotal - lentrain)/2)
 
+        lentotal = lentrain + lenval + lentest
         r, c = np.array(molecule_dataframe).shape
         n = 0
 
@@ -163,6 +170,7 @@ def makefeature(tr, fin=None, intype=None, ndata=0):
 
 def draw(tr_labels, tr_hypo, te_labels, te_hypo, dirpath, t):
     fig = plt.figure(figsize=(20,10))
+    plt.rc('font', size=15)
     ax1 = fig.add_subplot(121)
     ax2 = fig.add_subplot(122)
     ax1.title.set_text("train")
@@ -174,16 +182,17 @@ def draw(tr_labels, tr_hypo, te_labels, te_hypo, dirpath, t):
 
     tr_lim = max(max(tr_labels), max(tr_hypo)) 
     te_lim = max(max(te_labels), max(te_hypo))
+    max_lim = max(tr_lim, te_lim)
 
-    ax1.set_xlim([0,tr_lim])
-    ax1.set_ylim([0,tr_lim])
-    ax2.set_xlim([0,te_lim])
-    ax2.set_ylim([0,te_lim])
+    ax1.set_xlim([0,max_lim])
+    ax1.set_ylim([0,max_lim])
+    ax2.set_xlim([0,max_lim])
+    ax2.set_ylim([0,max_lim])
   
     ax1.scatter(tr_labels, tr_hypo, c='r', s=1)
-    ax1.plot([0,tr_lim], [0,tr_lim], c='k')
+    ax1.plot([0,max_lim], [0,max_lim], c='k')
     ax2.scatter(te_labels, te_hypo, c='r', s=1)
-    ax2.plot([0,te_lim], [0,te_lim], c='k')
+    ax2.plot([0,max_lim], [0,max_lim], c='k')
     
     plt.savefig("{:s}/CM{:s}.png".format(dirpath, t))
 # In[ ]:
@@ -299,11 +308,14 @@ def shuffle_batch(X, y, batch_size):
         yield X_batch, y_batch
         
 def batch(X, y, batch_size):
-    idx = np.arange(len(X))
-    n_batches = len(X) // batch_size
-    for batch_idx in np.array_split(idx, n_batches):
-        X_batch, y_batch = X[batch_idx,:], y[batch_idx,:]
-        yield X_batch, y_batch
+    if batch_size >= len(X):
+        yield X, y
+    else:
+        idx = np.arange(len(X))
+        n_batches = len(X) // batch_size
+        for batch_idx in np.array_split(idx, n_batches):
+            X_batch, y_batch = X[batch_idx,:], y[batch_idx,:]
+            yield X_batch, y_batch
 
 
 # In[ ]:
@@ -383,7 +395,7 @@ with tf.Session(config=config) as sess:
     g.write("test time for test set : {:s} ~ {:s}\n".format(stet, etet))
     g.close()
     if args.job == 'test':
-        h = open("../score",'w')
+        h = open("score",'w')
         h.write("{:f}\n".format(rmse))
         n_hl = 0
         for nhl in HL:
