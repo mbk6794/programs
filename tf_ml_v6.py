@@ -437,6 +437,7 @@ with tf.Session(config=config) as sess:
             if epoch%100 == 0:
                 loss_tr = sess.run(loss, feed_dict={X:tr_images, y:tr_labels, is_training: True})
                 loss_valid, val_hypo = sess.run([loss, n_hidden[-1]], feed_dict={X:val_images, y:val_labels, is_training: True})
+                print("epoch : {:d}, training loss : {:f}".format(epoch, loss_tr))
                 if args.log != None:
                     loss_tr = np.power(10, loss_tr)
                     loss_valid = np.power(10, loss_valid)        
