@@ -348,7 +348,7 @@ with tf.name_scope("dnn"):
                 n_hidden[i] = tf.layers.dropout(n_hidden[i], 0.2, is_training)
             else:
                 n_hidden[0] = tf.layers.dropout(n_hidden[0], DR[i], is_training)                    
-        elif i>0 and i<len(HL)-1:
+        elif i>0 and i<len(HL):
             if len(AF) == 0:
                 n_hidden.append(tf.layers.dense(n_hidden[i-1], HL[i], name="hidden{:d}".format(i+1), activation=tf.nn.relu))
             else:
@@ -357,8 +357,7 @@ with tf.name_scope("dnn"):
                 n_hidden[i] = tf.layers.dropout(n_hidden[i], 0.5, is_training)
             else:
                 n_hidden[i] = tf.layers.dropout(n_hidden[i], DR[i], is_training) 
-        elif i == len(HL)-1:
-            n_hidden.append(tf.layers.dense(n_hidden[i-1], n_output, name="output"))
+    n_hidden.append(tf.layers.dense(n_hidden[i-1], n_output, name="output"))
 
 
 # In[ ]:
