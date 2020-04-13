@@ -223,7 +223,7 @@ def makefeature(tr, fin=None, intype=None, ndata=0, log=None):
                         for j in range(int(n/2)+1,n+1):
                             columns.append('{:2d}-{:2d}'.format(i,j))
                         
-                feature = np.zeros((len(molecule_dataframe),len(columns)))
+                feature = np.zeros((len(molecule_dataframe),len(columns)+2))
             
                 for i in range(len(columns)):
                     for sample in range(len(molecule_dataframe)):
@@ -238,7 +238,7 @@ def makefeature(tr, fin=None, intype=None, ndata=0, log=None):
                     else:
                         target[sample] = np.log10(abs(np.array(molecule_dataframe["Coupling(eV)"])[sample]))
              
-                Target = target.reshape((len(molecule_dataframe),1))
+                target = target.reshape((len(molecule_dataframe),1))
 
                 if name == 0:
                     Feature = feature
@@ -246,7 +246,7 @@ def makefeature(tr, fin=None, intype=None, ndata=0, log=None):
                 else:
                     Feature = np.vstack((Feature, feature)) 
                     Target = np.vstack((Target, target))            
-    
+
             Data = np.hstack((Feature, Target))
             Data = np.random.permutation(Data)
             Feature = Data[:,:-1]
@@ -513,7 +513,7 @@ with tf.Session(config=config) as sess:
 
 
 with open('{:s}/te_hypo{:s}.txt'.format(dirpath, t),'w') as f:
-    f.write('test hypothesis, eV\n')
+    f.write('test_hypothesis, eV\n')
     for i in range(len(te_hypo)):
         f.write('{:f}\n'.format(te_hypo[i][0]))
 
@@ -523,7 +523,7 @@ with open('{:s}/te_labels{:s}.txt'.format(dirpath, t),'w') as g:
         g.write('{:f}\n'.format(te_labels[i][0]))
 
 with open('{:s}/tr_hypo{:s}.txt'.format(dirpath, t),'w') as f:
-    f.write('train hypothesis, eV\n')
+    f.write('train_hypothesis, eV\n')
     for i in range(len(tr_hypo)):
         f.write('{:f}\n'.format(tr_hypo[i][0]))
 
