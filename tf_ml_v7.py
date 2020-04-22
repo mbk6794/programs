@@ -19,7 +19,7 @@ import os
 # In[ ]:
 
 
-def makefeature(tr, fin=None, intype=None, ndata=0, log=None):
+def makefeature(tr, fin=None, intype=None, ndata=0, log=None, noneed=None):
     if tr == "train":
         for name in range(len(fin)):
             molecule_dataframe = pd.read_csv(fin[name],sep=",")
@@ -43,14 +43,12 @@ def makefeature(tr, fin=None, intype=None, ndata=0, log=None):
     
             if intype == 'a':
                 columns = []
-               
                 for i in range(1,n+1):
                     for j in range(i,n+1):
                         columns.append('{:2d}-{:2d}'.format(i,j))
                 
             elif intype == 'b':
                 columns = []
-              
                 for i in range(1,n+1): 
                     columns.append('{:2d}-{:2d}'.format(i,i)) 
                 for i in range(1,int(n/2)+1):
@@ -59,18 +57,24 @@ def makefeature(tr, fin=None, intype=None, ndata=0, log=None):
         
             elif intype == 'c':
                 columns = []
-         
                 for i in range(1,int(n/2)+1):
                     for j in range(int(n/2)+1,n+1):
                         columns.append('{:2d}-{:2d}'.format(i,j))
-    
-            feature = np.zeros((len(molecule_dataframe),len(columns)+2))
+
+            elif intype == 'all':
+                columns = list(range(c-1))
+                 
+            if noneed==None:
+                feature = np.zeros((len(molecule_dataframe),len(columns)))
+            else: 
+                feature = np.zeros((len(molecule_dataframe),len(columns)+2))
 
             for i in range(len(columns)):
                 for sample in range(len(molecule_dataframe)):
                     feature[sample][i] = np.array(molecule_dataframe[columns[i]])[sample]
-                    feature[sample][-2] = np.array(molecule_dataframe['state1'])[sample]
-                    feature[sample][-1] = np.array(molecule_dataframe['state2'])[sample]
+                    if noneed!=None:
+                        feature[sample][-2] = np.array(molecule_dataframe['state1'])[sample]
+                        feature[sample][-1] = np.array(molecule_dataframe['state2'])[sample]
          
             target = np.zeros((len(molecule_dataframe)))
             for sample in range(len(molecule_dataframe)):
@@ -222,14 +226,21 @@ def makefeature(tr, fin=None, intype=None, ndata=0, log=None):
                     for i in range(1,int(n/2)+1):
                         for j in range(int(n/2)+1,n+1):
                             columns.append('{:2d}-{:2d}'.format(i,j))
-                        
-                feature = np.zeros((len(molecule_dataframe),len(columns)+2))
+
+                elif intype == 'all':
+                    columns = list(range(c-1))
+            
+                if noneed==None:            
+                    feature = np.zeros((len(molecule_dataframe),len(columns)))
+                else:
+                    feature = np.zeros((len(molecule_dataframe),len(columns)+2))
             
                 for i in range(len(columns)):
                     for sample in range(len(molecule_dataframe)):
                         feature[sample][i] = np.array(molecule_dataframe[columns[i]])[sample]
-                        feature[sample][-2] = np.array(molecule_dataframe['state1'])[sample]
-                        feature[sample][-1] = np.array(molecule_dataframe['state2'])[sample]
+                        if noneed!=None:
+                            feature[sample][-2] = np.array(molecule_dataframe['state1'])[sample]
+                            feature[sample][-1] = np.array(molecule_dataframe['state2'])[sample]
 
                 target = np.zeros((len(molecule_dataframe)))
                 for sample in range(len(molecule_dataframe)):
@@ -300,16 +311,17 @@ parser.add_argument('-f','--fin', nargs='*', default=None, help='write filename 
 parser.add_argument('-hl','--hiddenlayer', nargs='*', type=int, help='hidden layers: ex) 5 5 5 means three layers, five perceptrons each')
 parser.add_argument('-af','--actfunc', nargs='*', type=int, default=None, help='the activation function of each layer')
 parser.add_argument('-dr','--drop', nargs='*', type=float, default=None, help='the rate of dropout of each layer')
-parser.add_argument('-t','--intype', choices=['a','b','c'], help='a: inter-, intra-, diag / b: inter-, diag / c: inter-')
+parser.add_argument('-t','--intype', choices=['a','b','c','all'], help='a: inter-, intra-, diag / b: inter-, diag / c: inter-')
 parser.add_argument('-nd','--ndata', type=int, default=None, help='the number of total data set, if None, whole data will be used')
 parser.add_argument('-epoch','--epoch', type=int, help='max number of epochs')
 parser.add_argument('-bs','--batchsize', type=int, help='batch size')
 parser.add_argument('-o','--output', default=None, help='output directory name')
 parser.add_argument('-log','--log', default=None, help='if this is true, labels set to logarithm value')
+parser.add_argument('-noneed','--noneed', default=None, type=int, help='the number of columns which are not need')
 
 args = parser.parse_args()
 
-tr_images, tr_labels, val_images, val_labels, te_images, te_labels, lentrain, lenval, lentotal = makefeature(args.job, args.fin, args.intype, args.ndata, args.log)
+tr_images, tr_labels, val_images, val_labels, te_images, te_labels, lentrain, lenval, lentotal = makefeature(args.job, args.fin, args.intype, args.ndata, args.log, args.noneed)
 print("Feature and label were produced")
 # In[ ]:
 _, n_inputs = tr_images.shape
