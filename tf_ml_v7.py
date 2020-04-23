@@ -36,10 +36,11 @@ def makefeature(tr, fin=None, intype=None, ndata=0, log=None, noneed=None):
             r, c = np.array(molecule_dataframe).shape
             n = 0
     
-            while True: #Determine the number of atoms in this system
-                if n*(n+1)/2 == (c-1-2):
-                    break
-                n += 1
+            if noneed != None:
+                while True: #Determine the number of atoms in this system
+                    if n*(n+1)/2 == (c-1-2):
+                        break
+                    n += 1
     
             if intype == 'a':
                 columns = []
@@ -62,7 +63,9 @@ def makefeature(tr, fin=None, intype=None, ndata=0, log=None, noneed=None):
                         columns.append('{:2d}-{:2d}'.format(i,j))
 
             elif intype == 'all':
-                columns = list(range(c-1))
+                columns = []
+                for i in range(c-1):
+                    columns.append("{:d}".format(i))
                  
             if noneed==None:
                 feature = np.zeros((len(molecule_dataframe),len(columns)))
@@ -199,10 +202,11 @@ def makefeature(tr, fin=None, intype=None, ndata=0, log=None, noneed=None):
                 r, c = np.array(molecule_dataframe).shape
                 n = 0
         
-                while True: #Determine the number of atoms in this system
-                    if n*(n+1)/2 == (c-1-2):
-                        break
-                    n += 1
+                if noneed != None:
+                    while True: #Determine the number of atoms in this system
+                        if n*(n+1)/2 == (c-1-2):
+                            break
+                        n += 1
             
                 if intype == 'a':
                     columns = []
@@ -228,7 +232,9 @@ def makefeature(tr, fin=None, intype=None, ndata=0, log=None, noneed=None):
                             columns.append('{:2d}-{:2d}'.format(i,j))
 
                 elif intype == 'all':
-                    columns = list(range(c-1))
+                    columns = []
+                    for i in range(c-1):
+                        columns.append("{:d}".format(i)) 
             
                 if noneed==None:            
                     feature = np.zeros((len(molecule_dataframe),len(columns)))
@@ -452,6 +458,7 @@ with tf.Session(config=config) as sess:
             if epoch%100 == 0:
                 loss_tr = sess.run(loss, feed_dict={X:tr_images, y:tr_labels, is_training: True})
                 loss_valid, val_hypo = sess.run([loss, n_hidden[-1]], feed_dict={X:val_images, y:val_labels, is_training: True})
+                print("epoch : {:d}".format(epoch))
                 if args.log != None:
                     loss_tr = np.power(10, loss_tr)
                     loss_valid = np.power(10, loss_valid)        
